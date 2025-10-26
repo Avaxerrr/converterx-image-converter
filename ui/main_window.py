@@ -125,6 +125,8 @@ class MainWindow(QMainWindow):
             f"Viewing: {image_file.filename}", 2000
         )
 
+        self.settings_panel.set_current_image(image_file)
+
     def _on_selection_changed(self):
         """Handle selection change."""
         has_selection = len(self.file_list.list_widget.selectedItems()) > 0

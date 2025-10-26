@@ -4,6 +4,40 @@ Image Converter/
 |    +--- converter.py
 |    \--- format_settings.py
 |    
++--- fonts
+|    +--- Inter-VariableFont_opsz,wght.ttf
+|    +--- Inter_18pt-Bold.ttf
+|    +--- Inter_18pt-Medium.ttf
+|    +--- Inter_18pt-Regular.ttf
+|    +--- Inter_18pt-SemiBold.ttf
+|    +--- Inter_28pt-Regular.ttf
+|    +--- Manrope-Bold.ttf
+|    +--- Manrope-ExtraBold.ttf
+|    +--- Manrope-ExtraLight.ttf
+|    +--- Manrope-Light.ttf
+|    +--- Manrope-Medium.ttf
+|    +--- Manrope-Regular.ttf
+|    +--- Manrope-SemiBold.ttf
+|    +--- SFMonoBold.otf
+|    +--- SFMonoMedium.otf
+|    +--- SFMonoRegular.otf
+|    +--- SFMonoSemibold.otf
+|    +--- SFPRODISPLAYMEDIUM.OTF
+|    \--- SFPRODISPLAYREGULAR.OTF
+|    
++--- icons
+|    +--- 3-dots.png
+|    +--- __init__.py
+|    +--- add_files.png
+|    +--- arrow-down-dark.png
+|    +--- arrow-down-white.png
+|    +--- arrow-up-dark.png
+|    +--- arrow-up-white.png
+|    +--- delete_files.png
+|    +--- jpg_icon.png
+|    +--- png_icon.png
+|    \--- webp_icon.png
+|    
 +--- models
 |    +--- __init__.py
 |    \--- image_file.py
@@ -11,17 +45,21 @@ Image Converter/
 +--- ui
 |    +--- __init__.py
 |    +--- file_list_widget.py
+|    +--- log_window.py
 |    +--- main_window.py
+|    +--- metadata_dialog.py
 |    +--- preview_widget.py
 |    \--- settings_panel.py
 |    
 +--- utils
 |    +--- __init__.py
-|    \--- file_utils.py
+|    +--- file_utils.py
+|    \--- logger.py
 |    
 +--- workers
 |    +--- __init__.py
 |    \--- conversion_worker.py
 |    
++--- file-structure.txt
 +--- main.py
-\--- styles.qss
+\--- theme.qss

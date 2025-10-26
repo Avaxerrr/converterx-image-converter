@@ -32,18 +32,6 @@ class FileListWidget(QWidget):
         super().__init__(parent)
         self.image_files: List[ImageFile] = []
         self._setup_ui()
-        self._load_stylesheet()
-
-    def _load_stylesheet(self):
-        """Load the stylesheet from external QSS file."""
-        # Look for QSS in qss/ folder, two levels up from ui/
-        style_file = Path(__file__).parent.parent / "qss" / "file_list_widget.qss"
-
-        if style_file.exists():
-            with open(style_file, 'r', encoding='utf-8') as f:
-                self.setStyleSheet(f.read())
-        else:
-            print(f"Warning: Stylesheet not found at {style_file}")
 
     def _get_format_icon(self, format_name: str) -> QIcon:
         """Get icon for a specific file format from file path."""
@@ -61,7 +49,7 @@ class FileListWidget(QWidget):
     def _setup_ui(self):
         """Initialize the user interface."""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(14, 8, 8, 8)
         layout.setSpacing(8)
 
         # Header with title and status count

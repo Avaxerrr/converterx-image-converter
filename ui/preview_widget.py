@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGraphicsView,
-    QGraphicsScene, QGraphicsPixmapItem, QToolButton
+    QGraphicsScene, QGraphicsPixmapItem, QToolButton, QHBoxLayout
 )
 from PySide6.QtCore import Qt, QRectF, QSize
 from PySide6.QtGui import QPixmap, QTransform, QWheelEvent, QPainter, QImageReader, QIcon
@@ -53,24 +53,24 @@ class PreviewWidget(QWidget):
         self.current_rotation: int = 0
         self.original_pixmap: QPixmap = None
         self._setup_ui()
-        self._load_stylesheet()
-
-    def _load_stylesheet(self):
-        """Load the stylesheet from external QSS file."""
-        # Look for QSS in qss/ folder, two levels up from ui/
-        style_file = Path(__file__).parent.parent / "qss" / "preview_widget.qss"
-
-        if style_file.exists():
-            with open(style_file, 'r', encoding='utf-8') as f:
-                self.setStyleSheet(f.read())
-        else:
-            print(f"Warning: Stylesheet not found at {style_file}")
 
     def _setup_ui(self):
         """Initialize the user interface."""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(8, 12, 8, 22)
+        layout.setSpacing(6)
+
+        # === ADD HEADER ===
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(8)
+
+        # Title label
+        self.title_label = QLabel("Preview")
+        self.title_label.setObjectName("panelHeader")
+        header_layout.addWidget(self.title_label)
+
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
 
         # Graphics view for image display
         self.view = ImageGraphicsView()
@@ -150,12 +150,13 @@ class PreviewWidget(QWidget):
     def _position_floating_toolbar(self):
         """Position the floating toolbar in the top-right corner."""
         if hasattr(self, 'toolbar_widget'):
-            margin = 12
+            margin_right = 16
+            margin_top = 12
             toolbar_width = self.toolbar_widget.sizeHint().width()
             toolbar_height = self.toolbar_widget.sizeHint().height()
 
-            x = self.view.width() - toolbar_width - margin
-            y = margin
+            x = self.view.width() - toolbar_width - margin_right
+            y = margin_top
 
             self.toolbar_widget.move(x, y)
             self.toolbar_widget.raise_()

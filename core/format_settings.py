@@ -11,6 +11,13 @@ class ImageFormat(Enum):
     PNG = "PNG"
 
 
+class ResizeMode(Enum):
+    """Image resize modes."""
+    NONE = "none"
+    PERCENTAGE = "percentage"
+    MAX_DIMENSIONS = "max_dimensions"
+
+
 @dataclass
 class ConversionSettings:
     """Settings for image conversion."""
@@ -19,9 +26,18 @@ class ConversionSettings:
     lossless: bool = False
     keep_metadata: bool = True
     png_compress_level: int = 6
-    target_size_kb: Optional[float] = None  # NEW: Target file size
-    webp_method: int = 6  # NEW: WebP compression effort
-    avif_speed: int = 4  # NEW: AVIF encoding speed
+    target_size_kb: Optional[float] = None
+    webp_subsampling: tuple = (2, 2)
+    webp_method: int = 6
+    avif_speed: int = 4
+    avif_range: str = "full"
+
+    # NEW: Resize settings
+    resize_mode: ResizeMode = ResizeMode.NONE
+    resize_percentage: float = 100.0  # 10-100%
+    max_width: Optional[int] = None
+    max_height: Optional[int] = None
+    maintain_aspect_ratio: bool = True
 
     def to_pillow_kwargs(self, quality_override: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -48,6 +64,7 @@ class ConversionSettings:
             else:
                 kwargs['quality'] = actual_quality
             kwargs['speed'] = self.avif_speed
+            kwargs['range'] = self.avif_range
 
         elif self.output_format == ImageFormat.JPEG:
             kwargs['format'] = 'JPEG'
