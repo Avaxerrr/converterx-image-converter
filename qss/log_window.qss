@@ -1,0 +1,75 @@
+/* Log Window Styles */
+
+QDialog {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+}
+
+#filterGroup {
+    font-size: 10pt;
+    font-weight: bold;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 4px;
+}
+
+#filterCheckbox {
+    color: #d4d4d4;
+    spacing: 8px;
+}
+
+#logDisplay {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 8px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 9pt;
+}
+
+#autoScrollCheckbox {
+    color: #d4d4d4;
+}
+
+#countLabel {
+    color: #808080;
+    font-size: 9pt;
+}
+
+#actionButton {
+    background-color: #0e639c;
+    border: 1px solid #007acc;
+    border-radius: 4px;
+    padding: 6px 16px;
+    color: #ffffff;
+    min-height: 24px;
+}
+
+#actionButton:hover {
+    background-color: #1177bb;
+    border: 1px solid #0098ff;
+}
+
+#actionButton:pressed {
+    background-color: #0d5a8f;
+}
+
+#clearButton {
+    background-color: #6e3030;
+    border: 1px solid #8e4040;
+    border-radius: 4px;
+    padding: 6px 16px;
+    color: #ffffff;
+    min-height: 24px;
+}
+
+#clearButton:hover {
+    background-color: #8e4040;
+    border: 1px solid #ae5050;
+}
+
+#clearButton:pressed {
+    background-color: #5e2020;
+}

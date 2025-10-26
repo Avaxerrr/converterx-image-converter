@@ -1,0 +1,27 @@
+Image Converter/
++--- core
+|    +--- __init__.py
+|    +--- converter.py
+|    \--- format_settings.py
+|    
++--- models
+|    +--- __init__.py
+|    \--- image_file.py
+|    
++--- ui
+|    +--- __init__.py
+|    +--- file_list_widget.py
+|    +--- main_window.py
+|    +--- preview_widget.py
+|    \--- settings_panel.py
+|    
++--- utils
+|    +--- __init__.py
+|    \--- file_utils.py
+|    
++--- workers
+|    +--- __init__.py
+|    \--- conversion_worker.py
+|    
++--- main.py
+\--- styles.qss

@@ -1,11 +1,12 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QHBoxLayout,
-    QPushButton, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
+    QWidget, QVBoxLayout, QLabel, QGraphicsView,
+    QGraphicsScene, QGraphicsPixmapItem, QToolButton
 )
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPixmap, QTransform, QWheelEvent, QPainter, QImageReader
+from PySide6.QtCore import Qt, QRectF, QSize
+from PySide6.QtGui import QPixmap, QTransform, QWheelEvent, QPainter, QImageReader, QIcon
 from pathlib import Path
 from models.image_file import ImageFile
+from ui.metadata_dialog import MetadataDialog
 
 
 class ImageGraphicsView(QGraphicsView):
@@ -28,20 +29,15 @@ class ImageGraphicsView(QGraphicsView):
 
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming."""
-        # Get wheel direction
         delta = event.angleDelta().y()
 
         if delta > 0:
-            # Zoom in
             factor = 1.15
         else:
-            # Zoom out
             factor = 1 / 1.15
 
-        # Calculate new zoom level
         new_zoom = self.zoom_factor * factor
 
-        # Clamp zoom level
         if self.min_zoom <= new_zoom <= self.max_zoom:
             self.scale(factor, factor)
             self.zoom_factor = new_zoom
@@ -54,9 +50,21 @@ class PreviewWidget(QWidget):
         super().__init__(parent)
         self.current_file: ImageFile = None
         self.current_pixmap: QPixmap = None
-        self.current_rotation: int = 0  # 0, 90, 180, 270
-        self.original_pixmap: QPixmap = None  # Store original for rotation
+        self.current_rotation: int = 0
+        self.original_pixmap: QPixmap = None
         self._setup_ui()
+        self._load_stylesheet()
+
+    def _load_stylesheet(self):
+        """Load the stylesheet from external QSS file."""
+        # Look for QSS in qss/ folder, two levels up from ui/
+        style_file = Path(__file__).parent.parent / "qss" / "preview_widget.qss"
+
+        if style_file.exists():
+            with open(style_file, 'r', encoding='utf-8') as f:
+                self.setStyleSheet(f.read())
+        else:
+            print(f"Warning: Stylesheet not found at {style_file}")
 
     def _setup_ui(self):
         """Initialize the user interface."""
@@ -64,48 +72,9 @@ class PreviewWidget(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        # Top bar with info and controls
-        top_bar = QHBoxLayout()
-
-        # Info label
-        self.info_label = QLabel("No image selected")
-        self.info_label.setStyleSheet(
-            "font-size: 11pt; padding: 8px; "
-            "background-color: #252526; border-radius: 4px;"
-        )
-        self.info_label.setWordWrap(True)
-        top_bar.addWidget(self.info_label, stretch=1)
-
-        # Rotation buttons
-        self.rotate_left_btn = QPushButton("↶ Rotate Left")
-        self.rotate_left_btn.clicked.connect(lambda: self._rotate_image(-90))
-        self.rotate_left_btn.setEnabled(False)
-
-        self.rotate_right_btn = QPushButton("↷ Rotate Right")
-        self.rotate_right_btn.clicked.connect(lambda: self._rotate_image(90))
-        self.rotate_right_btn.setEnabled(False)
-
-        # Zoom controls
-        self.fit_btn = QPushButton("Fit to Window")
-        self.fit_btn.clicked.connect(self._fit_to_window)
-        self.fit_btn.setEnabled(False)
-
-        self.actual_btn = QPushButton("100%")
-        self.actual_btn.clicked.connect(self._actual_size)
-        self.actual_btn.setEnabled(False)
-
-        top_bar.addWidget(self.rotate_left_btn)
-        top_bar.addWidget(self.rotate_right_btn)
-        top_bar.addWidget(self.fit_btn)
-        top_bar.addWidget(self.actual_btn)
-
-        layout.addLayout(top_bar)
-
         # Graphics view for image display
         self.view = ImageGraphicsView()
-        self.view.setStyleSheet(
-            "QGraphicsView { background-color: #252526; border: 1px solid #3e3e42; border-radius: 4px; }"
-        )
+        self.view.setObjectName("imageView")
 
         self.scene = QGraphicsScene()
         self.view.setScene(self.scene)
@@ -113,31 +82,104 @@ class PreviewWidget(QWidget):
 
         layout.addWidget(self.view, stretch=1)
 
-        # Zoom info label
+        # Create floating toolbar (will be positioned over the view)
+        self._create_floating_toolbar()
+
+        # Zoom info label at bottom
         self.zoom_label = QLabel("Use mouse wheel to zoom • Drag to pan")
-        self.zoom_label.setStyleSheet("color: #808080; font-size: 9pt;")
+        self.zoom_label.setObjectName("zoomLabel")
         self.zoom_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.zoom_label)
 
-    def _load_image_with_exif_fix(self, image_path: Path) -> QPixmap:
-        """Load image and fix EXIF orientation issues using Qt native support."""
-        try:
-            # Use QImageReader with auto-transform for EXIF orientation
-            reader = QImageReader(str(image_path))
-            reader.setAutoTransform(True)  # Handle EXIF orientation automatically
+    def _create_floating_toolbar(self):
+        """Create a floating toolbar that appears over the image."""
+        self.toolbar_widget = QWidget(self.view)
+        self.toolbar_widget.setObjectName("floatingToolbar")
 
+        from PySide6.QtWidgets import QHBoxLayout
+        toolbar_layout = QHBoxLayout(self.toolbar_widget)
+        toolbar_layout.setContentsMargins(6, 6, 6, 6)
+        toolbar_layout.setSpacing(4)
+
+        button_size = QSize(32, 32)
+
+        # Rotate left
+        self.rotate_left_btn = QToolButton()
+        self.rotate_left_btn.setObjectName("toolButton")
+        self.rotate_left_btn.setText("↶")
+        self.rotate_left_btn.setToolTip("Rotate Left (90° CCW)")
+        self.rotate_left_btn.setFixedSize(button_size)
+        self.rotate_left_btn.clicked.connect(lambda: self._rotate_image(-90))
+        self.rotate_left_btn.setEnabled(False)
+
+        # Rotate right
+        self.rotate_right_btn = QToolButton()
+        self.rotate_right_btn.setObjectName("toolButton")
+        self.rotate_right_btn.setText("↷")
+        self.rotate_right_btn.setToolTip("Rotate Right (90° CW)")
+        self.rotate_right_btn.setFixedSize(button_size)
+        self.rotate_right_btn.clicked.connect(lambda: self._rotate_image(90))
+        self.rotate_right_btn.setEnabled(False)
+
+        # Fit to window
+        self.fit_btn = QToolButton()
+        self.fit_btn.setObjectName("toolButton")
+        self.fit_btn.setText("⛶")
+        self.fit_btn.setToolTip("Fit to Window")
+        self.fit_btn.setFixedSize(button_size)
+        self.fit_btn.clicked.connect(self._fit_to_window)
+        self.fit_btn.setEnabled(False)
+
+        # Metadata button
+        self.metadata_btn = QToolButton()
+        self.metadata_btn.setObjectName("toolButton")
+        self.metadata_btn.setText("ⓘ")
+        self.metadata_btn.setToolTip("Show Metadata")
+        self.metadata_btn.setFixedSize(button_size)
+        self.metadata_btn.clicked.connect(self._show_metadata)
+        self.metadata_btn.setEnabled(False)
+
+        toolbar_layout.addWidget(self.rotate_left_btn)
+        toolbar_layout.addWidget(self.rotate_right_btn)
+        toolbar_layout.addWidget(self.fit_btn)
+        toolbar_layout.addWidget(self.metadata_btn)
+
+        # Position toolbar in top-right corner
+        self.toolbar_widget.hide()
+
+    def _position_floating_toolbar(self):
+        """Position the floating toolbar in the top-right corner."""
+        if hasattr(self, 'toolbar_widget'):
+            margin = 12
+            toolbar_width = self.toolbar_widget.sizeHint().width()
+            toolbar_height = self.toolbar_widget.sizeHint().height()
+
+            x = self.view.width() - toolbar_width - margin
+            y = margin
+
+            self.toolbar_widget.move(x, y)
+            self.toolbar_widget.raise_()
+
+    def resizeEvent(self, event):
+        """Handle widget resize to reposition toolbar."""
+        super().resizeEvent(event)
+        self._position_floating_toolbar()
+
+    def _load_image_with_exif_fix(self, image_path: Path) -> QPixmap:
+        """Load image and fix EXIF orientation issues."""
+        try:
+            reader = QImageReader(str(image_path))
+            reader.setAutoTransform(True)
             image = reader.read()
 
             if image.isNull():
                 print(f"Failed to read image: {reader.errorString()}")
                 return QPixmap()
 
-            # Convert QImage to QPixmap
             return QPixmap.fromImage(image)
 
         except Exception as e:
             print(f"Error loading image with EXIF fix: {e}")
-            # Fallback to direct loading
             return QPixmap(str(image_path))
 
     def _rotate_image(self, angle: int):
@@ -147,17 +189,14 @@ class PreviewWidget(QWidget):
 
         self.current_rotation = (self.current_rotation + angle) % 360
 
-        # Create transform for rotation
         transform = QTransform()
         transform.rotate(self.current_rotation)
 
-        # Apply rotation to original pixmap
         self.current_pixmap = self.original_pixmap.transformed(
             transform,
             Qt.SmoothTransformation
         )
 
-        # Update display
         if self.pixmap_item:
             self.pixmap_item.setPixmap(self.current_pixmap)
             self.scene.setSceneRect(QRectF(self.current_pixmap.rect()))
@@ -170,12 +209,11 @@ class PreviewWidget(QWidget):
             self.view.zoom_factor = 1.0
             self._update_zoom_label()
 
-    def _actual_size(self):
-        """Reset to 100% zoom."""
-        if self.pixmap_item:
-            self.view.resetTransform()
-            self.view.zoom_factor = 1.0
-            self._update_zoom_label()
+    def _show_metadata(self):
+        """Show metadata dialog."""
+        if self.current_file:
+            dialog = MetadataDialog(self.current_file, self)
+            dialog.exec()
 
     def _update_zoom_label(self):
         """Update the zoom percentage display."""
@@ -190,7 +228,6 @@ class PreviewWidget(QWidget):
         self.current_rotation = 0
 
         try:
-            # Load image with EXIF fix
             self.original_pixmap = self._load_image_with_exif_fix(image_file.path)
 
             if self.original_pixmap.isNull():
@@ -199,27 +236,20 @@ class PreviewWidget(QWidget):
 
             self.current_pixmap = self.original_pixmap
 
-            # Clear scene and add new pixmap
             self.scene.clear()
             self.pixmap_item = QGraphicsPixmapItem(self.current_pixmap)
             self.scene.addItem(self.pixmap_item)
             self.scene.setSceneRect(QRectF(self.current_pixmap.rect()))
 
-            # Fit to window initially
             self._fit_to_window()
 
-            # Enable controls
+            # Show and enable toolbar
+            self.toolbar_widget.show()
+            self._position_floating_toolbar()
             self.rotate_left_btn.setEnabled(True)
             self.rotate_right_btn.setEnabled(True)
             self.fit_btn.setEnabled(True)
-            self.actual_btn.setEnabled(True)
-
-            # Update info label
-            info_text = (
-                f"<b>{image_file.filename}</b><br>"
-                f"{image_file.dimensions_str} px  •  {image_file.size_str}  •  {image_file.format}"
-            )
-            self.info_label.setText(info_text)
+            self.metadata_btn.setEnabled(True)
 
             # Connect wheel event to update label
             self.view.wheelEvent = self._create_wheel_handler()
@@ -244,22 +274,43 @@ class PreviewWidget(QWidget):
         self.original_pixmap = None
         self.current_rotation = 0
         self.scene.clear()
-        self.info_label.setText("No image selected")
         self.zoom_label.setText("Use mouse wheel to zoom • Drag to pan")
 
-        # Disable controls
+        if hasattr(self, 'toolbar_widget'):
+            self.toolbar_widget.hide()
+
         self.rotate_left_btn.setEnabled(False)
         self.rotate_right_btn.setEnabled(False)
         self.fit_btn.setEnabled(False)
-        self.actual_btn.setEnabled(False)
+        self.metadata_btn.setEnabled(False)
 
     def _show_error(self, message: str):
         """Display an error message."""
         self.scene.clear()
-        self.info_label.setText(f"<span style='color: #f48771;'>{message}</span>")
+        self.zoom_label.setText(message)
 
-        # Disable controls
+        if hasattr(self, 'toolbar_widget'):
+            self.toolbar_widget.hide()
+
         self.rotate_left_btn.setEnabled(False)
         self.rotate_right_btn.setEnabled(False)
         self.fit_btn.setEnabled(False)
-        self.actual_btn.setEnabled(False)
+        self.metadata_btn.setEnabled(False)
+
+    def set_toolbar_icons(self, rotate_left: str, rotate_right: str, fit_window: str, metadata: str):
+        """Set custom icons for toolbar buttons."""
+        if Path(rotate_left).exists():
+            self.rotate_left_btn.setIcon(QIcon(rotate_left))
+            self.rotate_left_btn.setText("")
+
+        if Path(rotate_right).exists():
+            self.rotate_right_btn.setIcon(QIcon(rotate_right))
+            self.rotate_right_btn.setText("")
+
+        if Path(fit_window).exists():
+            self.fit_btn.setIcon(QIcon(fit_window))
+            self.fit_btn.setText("")
+
+        if Path(metadata).exists():
+            self.metadata_btn.setIcon(QIcon(metadata))
+            self.metadata_btn.setText("")
