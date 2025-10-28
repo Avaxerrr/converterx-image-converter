@@ -9,7 +9,7 @@ from typing import List
 
 # Logger
 from ui.log_window import LogWindow
-from utils.logger import logger
+from utils.logger import logger, LogLevel
 
 from ui.file_list_widget import FileListWidget
 from ui.preview_widget import PreviewWidget
@@ -39,6 +39,8 @@ class MainWindow(QMainWindow):
 
         # ← ADD THIS TEST LOG
         logger.info("ConverterX started successfully", source="App")
+
+        self.file_list.files_dropped.connect(self._on_files_dropped)
 
     def _setup_ui(self):
         """Initialize the user interface."""
@@ -89,6 +91,9 @@ class MainWindow(QMainWindow):
         self.file_list.clear_btn.clicked.connect(self._on_clear_files)
         self.file_list.file_selected.connect(self._on_file_selected)
         self.file_list.list_widget.itemSelectionChanged.connect(self._on_selection_changed)
+        self.file_list.files_dropped.connect(self._on_files_dropped)
+
+        # Settings signal
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
         self.settings_panel.convert_requested.connect(self._on_convert_selected)
 
@@ -264,3 +269,35 @@ class MainWindow(QMainWindow):
             self.log_window.show()
             self.log_window.raise_()
             self.log_window.activateWindow()
+
+    def _on_files_dropped(self, file_paths: List[Path]):
+        """Handle files dropped into the file list widget."""
+        from utils.file_utils import load_image_files
+
+        self.status_bar.showMessage("Loading dropped files...")
+        loaded_files = load_image_files(file_paths)
+
+        if not loaded_files:
+            QMessageBox.warning(
+                self,
+                "No Valid Images",
+                "None of the dropped files are supported image formats."
+            )
+            self.status_bar.showMessage("No valid images", 2000)
+            return
+
+        # Add to file list
+        self.file_list.add_files(loaded_files)
+
+        # Select the first newly added file to show preview
+        if loaded_files:
+            # Calculate the index of the first newly added file
+            first_new_index = len(self.file_list.image_files) - len(loaded_files)
+            self.file_list.list_widget.setCurrentRow(first_new_index)
+
+        # Log success using the correct logger method
+        logger.info(
+            f"Added {len(loaded_files)} file(s) via drag and drop",
+            source="MainWindow"
+        )
+        self.status_bar.showMessage(f"Added {len(loaded_files)} file(s)", 2000)

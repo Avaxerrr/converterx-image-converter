@@ -896,3 +896,22 @@ SettingsPanel #resize-preview-label {
     border-radius: 3px;
     margin-top: 4px;
 }
+
+/* ============================================
+   Drag & Drop
+   ============================================ */
+/* Drag & Drop Hint Label */
+QLabel#dragHintLabel {
+    color: #888;
+    font-size: 13px;
+    padding: 60px 20px;
+    border: 2px dashed #555;
+    border-radius: 6px;
+    background-color: transparent;
+}
+
+QLabel#dragHintLabel[dragging="true"] {
+    color: #4CAF50;
+    border: 2px dashed #4CAF50;
+    background-color: rgba(76, 175, 80, 0.08);
+}

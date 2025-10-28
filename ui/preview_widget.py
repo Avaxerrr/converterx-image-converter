@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene, QGraphicsPixmapItem, QToolButton, QHBoxLayout
 )
 from PySide6.QtCore import Qt, QRectF, QSize
-from PySide6.QtGui import QPixmap, QTransform, QWheelEvent, QPainter, QImageReader, QIcon
+from PySide6.QtGui import QPixmap, QTransform, QWheelEvent, QPainter, QImageReader, QIcon, QImage
 from pathlib import Path
 from models.image_file import ImageFile
 from ui.metadata_dialog import MetadataDialog
@@ -167,21 +167,47 @@ class PreviewWidget(QWidget):
         self._position_floating_toolbar()
 
     def _load_image_with_exif_fix(self, image_path: Path) -> QPixmap:
-        """Load image and fix EXIF orientation issues."""
+        """Load image using PIL (supports AVIF) and convert to QPixmap with EXIF orientation fix."""
         try:
-            reader = QImageReader(str(image_path))
-            reader.setAutoTransform(True)
-            image = reader.read()
+            from PIL import Image, ImageOps
 
-            if image.isNull():
-                print(f"Failed to read image: {reader.errorString()}")
-                return QPixmap()
+            # Load with PIL (this supports AVIF via pillow-avif-plugin)
+            with Image.open(image_path) as pil_image:
+                # Apply EXIF orientation
+                pil_image = ImageOps.exif_transpose(pil_image)
 
-            return QPixmap.fromImage(image)
+                # Convert to RGB/RGBA for compatibility
+                if pil_image.mode not in ('RGB', 'RGBA'):
+                    if pil_image.mode == 'P':  # Palette mode
+                        pil_image = pil_image.convert('RGBA')
+                    else:
+                        pil_image = pil_image.convert('RGB')
+
+                # Convert PIL image to QPixmap
+                if pil_image.mode == 'RGBA':
+                    data = pil_image.tobytes('raw', 'RGBA')
+                    qimage = QImage(
+                        data,
+                        pil_image.width,
+                        pil_image.height,
+                        pil_image.width * 4,  # bytes per line
+                        QImage.Format_RGBA8888
+                    )
+                else:  # RGB
+                    data = pil_image.tobytes('raw', 'RGB')
+                    qimage = QImage(
+                        data,
+                        pil_image.width,
+                        pil_image.height,
+                        pil_image.width * 3,  # bytes per line
+                        QImage.Format_RGB888
+                    )
+
+                return QPixmap.fromImage(qimage)
 
         except Exception as e:
-            print(f"Error loading image with EXIF fix: {e}")
-            return QPixmap(str(image_path))
+            print(f"Failed to read image: {e}")
+            return QPixmap()  # Return empty pixmap on error
 
     def _rotate_image(self, angle: int):
         """Rotate the current image by specified angle."""
