@@ -8,7 +8,7 @@ from typing import List
 
 from ui.file_list_widget import FileListWidget
 from ui.preview_widget import PreviewWidget
-from ui.settings_panel import SettingsPanel
+from ui.settings import SettingsPanel
 from utils.file_utils import load_image_files, SUPPORTED_FORMATS
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
