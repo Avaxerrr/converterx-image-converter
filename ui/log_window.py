@@ -18,7 +18,7 @@ class LogWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Application Log")
-        self.setMinimumSize(800, 500)
+        self.setMinimumSize(500, 200)
         self._setup_ui()
         self._load_stylesheet()
 

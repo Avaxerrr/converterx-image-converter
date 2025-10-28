@@ -3,8 +3,13 @@ from PySide6.QtWidgets import (
     QFileDialog, QStatusBar, QMessageBox, QProgressDialog
 )
 from PySide6.QtCore import Qt, QTimer, QThreadPool
+from PySide6.QtGui import QShortcut, QKeySequence
 from pathlib import Path
 from typing import List
+
+# Logger
+from ui.log_window import LogWindow
+from utils.logger import logger
 
 from ui.file_list_widget import FileListWidget
 from ui.preview_widget import PreviewWidget
@@ -22,8 +27,18 @@ class MainWindow(QMainWindow):
         self.current_settings: ConversionSettings = None
         self.threadpool = QThreadPool()
         self.progress_dialog: QProgressDialog = None
+
+        # Created on-demand log
+        self.log_window = None
+
         self._setup_ui()
         self._connect_signals()
+
+        # logger hotkey
+        self._setup_logger_hotkey()
+
+        # ← ADD THIS TEST LOG
+        logger.info("ConverterX started successfully", source="App")
 
     def _setup_ui(self):
         """Initialize the user interface."""
@@ -95,10 +110,12 @@ class MainWindow(QMainWindow):
             image_files = load_image_files(paths)
 
             if image_files:
-                self.file_list.add_files(image_files)
-                self.status_bar.showMessage(
-                    f"Loaded {len(image_files)} file(s)", 3000
+                # LOG: User successfully added files to the conversion queue
+                logger.info(
+                    f"Added {len(image_files)} file(s) to queue",
+                    source="MainWindow"
                 )
+                self.file_list.add_files(image_files)
 
     def _on_clear_files(self):
         """Handle Clear All button click."""
@@ -140,6 +157,16 @@ class MainWindow(QMainWindow):
         """Convert currently selected file."""
         selected_file = self.file_list.get_selected_file()
 
+        # LOG: User initiated conversion - log settings for debugging
+        if selected_file and self.current_settings:
+            logger.info(
+                f"Starting conversion: {selected_file.filename} → "
+                f"{self.current_settings.output_format.value} "
+                f"(Q{self.current_settings.quality}, "
+                f"Resize:{self.current_settings.resize_mode.value})",
+                source="MainWindow"
+            )
+
         if not selected_file:
             return
 
@@ -175,6 +202,14 @@ class MainWindow(QMainWindow):
 
     def _on_conversion_success(self, result: dict):
         """Handle successful conversion."""
+        # LOG: Successful conversion with file sizes and savings
+        logger.success(
+            f"✓ {result['input_file'].filename} → "
+            f"{result['output_path'].name} "
+            f"({result['input_file'].size_str} → {result['output_size'] / 1024:.1f} KB, "
+            f"{result['savings_string']})",
+            source="Converter"
+        )
         if self.progress_dialog:
             self.progress_dialog.close()
 
@@ -193,6 +228,8 @@ class MainWindow(QMainWindow):
 
     def _on_conversion_error(self, error_msg: str):
         """Handle conversion error."""
+        # LOG: Conversion failed - critical for debugging user issues
+        logger.error(f"Conversion failed: {error_msg}", source="Converter")
         if self.progress_dialog:
             self.progress_dialog.close()
 
@@ -203,3 +240,27 @@ class MainWindow(QMainWindow):
         """Handle conversion completion."""
         self.settings_panel.set_convert_enabled(True)
         self.status_bar.setStyleSheet("")  # Reset status bar color
+
+    def _setup_logger_hotkey(self):
+        """Setup F12 hotkey to toggle log window."""
+        self.log_shortcut = QShortcut(QKeySequence("F12"), self)
+        self.log_shortcut.activated.connect(self._toggle_log_window)
+
+    def _toggle_log_window(self):
+        """Show/hide log window."""
+        print("F12 pressed - toggling log window")  # ← ADD THIS FOR DEBUGGING
+
+        if self.log_window is None:
+            print("Creating new log window")  # ← ADD THIS
+            self.log_window = LogWindow(self)
+            logger.info("Log window opened", source="MainWindow")
+
+        # Toggle visibility
+        if self.log_window.isVisible():
+            print("Hiding log window")  # ← ADD THIS
+            self.log_window.hide()
+        else:
+            print("Showing log window")  # ← ADD THIS
+            self.log_window.show()
+            self.log_window.raise_()
+            self.log_window.activateWindow()

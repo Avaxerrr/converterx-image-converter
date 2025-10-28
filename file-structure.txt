@@ -29,13 +29,22 @@ Image Converter/
 |    +--- 3-dots.png
 |    +--- __init__.py
 |    +--- add_files.png
+|    +--- add_files.svg
 |    +--- arrow-down-dark.png
 |    +--- arrow-down-white.png
 |    +--- arrow-up-dark.png
 |    +--- arrow-up-white.png
 |    +--- delete_files.png
+|    +--- delete_files.svg
+|    +--- frame.svg
+|    +--- hd-preview.svg
+|    +--- info.svg
 |    +--- jpg_icon.png
 |    +--- png_icon.png
+|    +--- rotate-left.svg
+|    +--- rotate-right.svg
+|    +--- settings-button.png
+|    +--- settings-button.svg
 |    \--- webp_icon.png
 |    
 +--- models
@@ -43,13 +52,22 @@ Image Converter/
 |    \--- image_file.py
 |    
 +--- ui
+|    +--- settings
+|    |    +--- __init__.py
+|    |    +--- advanced_settings.py
+|    |    +--- collapsible_section.py
+|    |    +--- output_settings.py
+|    |    +--- resize_settings.py
+|    |    \--- settings_panel.py
+|    |    
+|    +--- widgets
 |    +--- __init__.py
 |    +--- file_list_widget.py
 |    +--- log_window.py
 |    +--- main_window.py
 |    +--- metadata_dialog.py
 |    +--- preview_widget.py
-|    \--- settings_panel.py
+|    \--- settings_panel(old no use).py
 |    
 +--- utils
 |    +--- __init__.py
@@ -62,4 +80,5 @@ Image Converter/
 |    
 +--- file-structure.txt
 +--- main.py
++--- nuitka-commands.txt
 \--- theme.qss

@@ -3,6 +3,9 @@ from typing import List, Optional
 from PIL import Image
 from models.image_file import ImageFile
 
+from utils.logger import logger
+
+
 # Supported image formats
 SUPPORTED_FORMATS = {
     '.jpg', '.jpeg', '.png', '.webp', '.bmp',
@@ -35,6 +38,8 @@ def load_image_file(file_path: Path) -> Optional[ImageFile]:
                 width, height = img.size
                 format_name = img.format
         except Exception as e:
+            # LOG: Failed to read image metadata (corrupt file, unsupported format, etc.)
+            logger.warning(f"Could not read metadata for {file_path.name}: {str(e)}", source="FileLoader")
             print(f"Warning: Could not read image metadata for {file_path}: {e}")
             width, height = None, None
             format_name = file_path.suffix.upper().replace('.', '')
@@ -48,7 +53,11 @@ def load_image_file(file_path: Path) -> Optional[ImageFile]:
         )
 
     except Exception as e:
+
+        # LOG: Complete failure to load image file (file not found, permissions, etc.)
+        logger.error(f"Failed to load {file_path.name}: {str(e)}", source="FileLoader")
         print(f"Error loading file {file_path}: {e}")
+
         return None
 
 
@@ -64,6 +73,9 @@ def load_image_files(file_paths: List[Path]) -> List[ImageFile]:
     """
     image_files = []
 
+    # LOG: Track how many files user is attempting to load
+    logger.info(f"Loading {len(file_paths)} file(s)...", source="FileLoader")
+
     for path in file_paths:
         if not is_supported_image(path):
             print(f"Skipping unsupported file: {path}")
@@ -72,6 +84,16 @@ def load_image_files(file_paths: List[Path]) -> List[ImageFile]:
         image_file = load_image_file(path)
         if image_file:
             image_files.append(image_file)
+
+    # LOG: Summary of successful loads (helps identify if some files failed silently)
+    if image_files:
+        total_size_mb = sum(f.size_mb for f in image_files)
+        logger.info(
+            f"Successfully loaded {len(image_files)}/{len(file_paths)} images ({total_size_mb:.1f} MB total)",
+            source="FileLoader"
+        )
+    else:
+        logger.warning("No images were successfully loaded", source="FileLoader")
 
     return image_files
 

@@ -4,6 +4,8 @@ from core.converter import ImageConverter
 from core.format_settings import ConversionSettings
 from models.image_file import ImageFile
 
+from utils.logger import logger
+
 
 class WorkerSignals(QObject):
     """Signals for conversion worker."""
@@ -33,6 +35,11 @@ class ConversionWorker(QRunnable):
     def run(self):
         """Execute the conversion."""
         try:
+            # LOG: Worker thread started conversion (useful for tracking concurrency issues)
+            logger.debug(
+                f"Worker processing: {self.image_file.filename}",
+                source="Worker"
+            )
             # Perform conversion
             success, message, output_size = ImageConverter.convert_image(
                 self.image_file.path,
@@ -61,6 +68,11 @@ class ConversionWorker(QRunnable):
                 self.signals.error.emit(f"{self.image_file.filename}: {message}")
 
         except Exception as e:
+            # LOG: Unexpected exception in worker thread (critical bug indicator)
+            logger.error(
+                f"Worker exception for {self.image_file.filename}: {str(e)}",
+                source="Worker"
+            )
             self.signals.error.emit(f"{self.image_file.filename}: {str(e)}")
         finally:
             self.signals.finished.emit()
