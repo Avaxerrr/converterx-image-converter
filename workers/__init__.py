@@ -1,3 +1,4 @@
-from .conversion_worker import ConversionWorker, WorkerSignals
+from .conversion_worker import ConversionWorker
+from .thumbnail_generator import ThumbnailGenerator
 
-__all__ = ['ConversionWorker', 'WorkerSignals']
+__all__ = ['ConversionWorker', 'ThumbnailGenerator']

@@ -60,7 +60,6 @@ Image Converter/
 |    |    +--- resize_settings.py
 |    |    \--- settings_panel.py
 |    |    
-|    +--- widgets
 |    +--- __init__.py
 |    +--- file_list_widget.py
 |    +--- log_window.py
@@ -76,9 +75,11 @@ Image Converter/
 |    
 +--- workers
 |    +--- __init__.py
-|    \--- conversion_worker.py
+|    +--- conversion_worker.py
+|    \--- thumbnail_generator.py
 |    
 +--- file-structure.txt
 +--- main.py
 +--- nuitka-commands.txt
++--- test_avif.py
 \--- theme.qss
