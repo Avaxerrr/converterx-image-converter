@@ -6,12 +6,15 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QToolButton
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QIcon
 from pathlib import Path
+from .preview_types import PreviewMode
+from utils.logger import logger
 
 
 class PreviewToolbar(QWidget):
     """Floating toolbar widget with zoom, rotate, and metadata controls."""
 
     # Signals for button actions
+    preview_mode_changed = Signal(PreviewMode)
     rotate_left_clicked = Signal()
     rotate_right_clicked = Signal()
     fit_to_window_clicked = Signal()
@@ -24,7 +27,10 @@ class PreviewToolbar(QWidget):
         # CRITICAL: Enable styled background for QSS to work
         self.setAttribute(Qt.WA_StyledBackground, True)
 
+        self.current_mode = PreviewMode.PREVIEW  # Start in preview mode
         self._setup_ui()
+
+        logger.debug("Preview toolbar initialized in Preview mode", "PreviewToolbar")
 
     def _setup_ui(self):
         """Create toolbar buttons and layout."""
@@ -33,6 +39,28 @@ class PreviewToolbar(QWidget):
         toolbar_layout.setSpacing(4)
 
         button_size = QSize(32, 32)
+
+        # === HD/Preview Toggle Button (LEFT SIDE) ===
+        self.hd_toggle_btn = QToolButton()
+        self.hd_toggle_btn.setObjectName("hdToggleButton")  # Special objectName for styling
+        self.hd_toggle_btn.setToolTip("Toggle HD Mode (Full Resolution)")
+        self.hd_toggle_btn.setFixedSize(button_size)
+        self.hd_toggle_btn.clicked.connect(self._toggle_preview_mode)
+        self.hd_toggle_btn.setEnabled(False)
+        self.hd_toggle_btn.setCheckable(True)  # Make it a toggle button
+        self.hd_toggle_btn.setChecked(False)   # Start unchecked (Preview mode)
+
+        # Try to load icon
+        icon_path = Path("icons/hd-preview.svg")
+        if icon_path.exists():
+            self.hd_toggle_btn.setIcon(QIcon(str(icon_path)))
+        else:
+            self.hd_toggle_btn.setText("HD")  # Fallback text
+            logger.warning(f"HD preview icon not found: {icon_path}", "PreviewToolbar")
+
+        toolbar_layout.addWidget(self.hd_toggle_btn)
+
+        # === Existing Buttons (RIGHT SIDE) ===
 
         # Rotate left button
         self.rotate_left_btn = QToolButton()
@@ -76,15 +104,37 @@ class PreviewToolbar(QWidget):
         toolbar_layout.addWidget(self.fit_btn)
         toolbar_layout.addWidget(self.metadata_btn)
 
+    def _toggle_preview_mode(self):
+        """Toggle between Preview and HD modes."""
+        old_mode = self.current_mode
+
+        if self.current_mode == PreviewMode.PREVIEW:
+            self.current_mode = PreviewMode.HD
+            self.hd_toggle_btn.setChecked(True)
+            logger.info("Switched to HD mode (full resolution)", "PreviewToolbar")
+        else:
+            self.current_mode = PreviewMode.PREVIEW
+            self.hd_toggle_btn.setChecked(False)
+            logger.info("Switched to Preview mode (optimized)", "PreviewToolbar")
+
+        self.preview_mode_changed.emit(self.current_mode)
+
+    def set_preview_mode(self, mode: PreviewMode):
+        """Set the current preview mode (programmatically)."""
+        self.current_mode = mode
+        self.hd_toggle_btn.setChecked(mode == PreviewMode.HD)
+        logger.debug(f"Preview mode set to: {mode.value}", "PreviewToolbar")
+
     def enable_buttons(self, enabled: bool):
         """Enable or disable all toolbar buttons."""
+        self.hd_toggle_btn.setEnabled(enabled)
         self.rotate_left_btn.setEnabled(enabled)
         self.rotate_right_btn.setEnabled(enabled)
         self.fit_btn.setEnabled(enabled)
         self.metadata_btn.setEnabled(enabled)
 
     def set_icons(self, rotate_left: str, rotate_right: str, fit_window: str, metadata: str):
-        """Set custom icons for toolbar buttons."""
+        """Set custom icons for toolbar buttons (excluding HD toggle which uses fixed icon)."""
         if Path(rotate_left).exists():
             self.rotate_left_btn.setIcon(QIcon(rotate_left))
             self.rotate_left_btn.setText("")

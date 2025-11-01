@@ -9,14 +9,22 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPixmap, QTransform, QImage
 from pathlib import Path
+from typing import Dict
 from models.image_file import ImageFile
 from ui.metadata_dialog import MetadataDialog
 from .image_graphics_view import ImageGraphicsView
 from .preview_toolbar import PreviewToolbar
+from .preview_types import PreviewMode
+from utils.logger import logger
 
 
 class PreviewWidget(QWidget):
     """Widget for displaying image preview with zoom and rotation."""
+
+    # Preview settings
+    PREVIEW_MAX_DIMENSION = 1920  # Max width or height for preview mode
+    MAX_PREVIEW_CACHE = 10        # Cache up to 10 preview images
+    MAX_HD_CACHE = 2              # Cache up to 2 HD images
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -24,7 +32,14 @@ class PreviewWidget(QWidget):
         self.current_pixmap: QPixmap = None
         self.current_rotation: int = 0
         self.original_pixmap: QPixmap = None
+        self.current_mode: PreviewMode = PreviewMode.PREVIEW
+
+        # Image caches (path -> QPixmap)
+        self.preview_cache: Dict[Path, QPixmap] = {}
+        self.hd_cache: Dict[Path, QPixmap] = {}
+
         self._setup_ui()
+        logger.info(f"Preview widget initialized (max dimension: {self.PREVIEW_MAX_DIMENSION}px)", "PreviewWidget")
 
     def _setup_ui(self):
         """Initialize the user interface."""
@@ -59,6 +74,7 @@ class PreviewWidget(QWidget):
         self.toolbar.hide()
 
         # Connect toolbar signals to internal methods
+        self.toolbar.preview_mode_changed.connect(self._on_preview_mode_changed)
         self.toolbar.rotate_left_clicked.connect(lambda: self._rotate_image(-90))
         self.toolbar.rotate_right_clicked.connect(lambda: self._rotate_image(90))
         self.toolbar.fit_to_window_clicked.connect(self._fit_to_window)
@@ -89,15 +105,46 @@ class PreviewWidget(QWidget):
         super().resizeEvent(event)
         self._position_floating_toolbar()
 
-    def _load_image_with_exif_fix(self, image_path: Path) -> QPixmap:
-        """Load image using PIL (supports AVIF) and convert to QPixmap with EXIF orientation fix."""
+    def _load_image_with_exif_fix(self, image_path: Path, preview_mode: bool = False) -> QPixmap:
+        """
+        Load image using PIL (supports AVIF) and convert to QPixmap with EXIF orientation fix.
+
+        Args:
+            image_path: Path to the image file
+            preview_mode: If True, downscale to PREVIEW_MAX_DIMENSION for performance
+        """
         try:
             from PIL import Image, ImageOps
 
             # Load with PIL (this supports AVIF via pillow-avif-plugin)
             with Image.open(image_path) as pil_image:
+                original_size = (pil_image.width, pil_image.height)
+
                 # Apply EXIF orientation
                 pil_image = ImageOps.exif_transpose(pil_image)
+
+                # === PREVIEW MODE: Downscale if needed ===
+                if preview_mode:
+                    max_dim = max(pil_image.width, pil_image.height)
+                    if max_dim > self.PREVIEW_MAX_DIMENSION:
+                        # Use thumbnail() - maintains aspect ratio, only downscales
+                        pil_image.thumbnail(
+                            (self.PREVIEW_MAX_DIMENSION, self.PREVIEW_MAX_DIMENSION),
+                            Image.Resampling.LANCZOS
+                        )
+                        logger.debug(
+                            f"Downscaled {image_path.name}: {original_size} → "
+                            f"({pil_image.width}x{pil_image.height})",
+                            "ImageLoader"
+                        )
+                    else:
+                        logger.debug(
+                            f"No downscaling needed for {image_path.name}: "
+                            f"{original_size} ≤ {self.PREVIEW_MAX_DIMENSION}px",
+                            "ImageLoader"
+                        )
+                else:
+                    logger.debug(f"Loading full resolution: {image_path.name} {original_size}", "ImageLoader")
 
                 # Convert to RGB/RGBA for compatibility
                 if pil_image.mode not in ('RGB', 'RGBA'):
@@ -129,8 +176,93 @@ class PreviewWidget(QWidget):
                 return QPixmap.fromImage(qimage)
 
         except Exception as e:
-            print(f"Failed to read image: {e}")
+            logger.error(f"Failed to load image {image_path.name}: {e}", "ImageLoader")
             return QPixmap()  # Return empty pixmap on error
+
+    def _get_cached_or_load(self, image_path: Path, mode: PreviewMode) -> QPixmap:
+        """Get image from cache or load it (with caching)."""
+        cache = self.preview_cache if mode == PreviewMode.PREVIEW else self.hd_cache
+        max_cache = self.MAX_PREVIEW_CACHE if mode == PreviewMode.PREVIEW else self.MAX_HD_CACHE
+        mode_name = "Preview" if mode == PreviewMode.PREVIEW else "HD"
+
+        # Check cache first
+        if image_path in cache:
+            logger.debug(f"Cache HIT: {image_path.name} ({mode_name} mode)", "ImageCache")
+            return cache[image_path]
+
+        logger.debug(f"Cache MISS: {image_path.name} ({mode_name} mode), loading...", "ImageCache")
+
+        # Load image
+        is_preview = (mode == PreviewMode.PREVIEW)
+        pixmap = self._load_image_with_exif_fix(image_path, preview_mode=is_preview)
+
+        # Cache it (with size limit)
+        if len(cache) >= max_cache:
+            # Remove oldest entry (first item)
+            oldest_key = next(iter(cache))
+            logger.debug(
+                f"Cache full ({len(cache)}/{max_cache}), evicting: {oldest_key.name} ({mode_name})",
+                "ImageCache"
+            )
+            del cache[oldest_key]
+
+        cache[image_path] = pixmap
+        logger.info(
+            f"Cached {image_path.name} ({mode_name} mode) | "
+            f"Cache size: {len(cache)}/{max_cache}",
+            "ImageCache"
+        )
+
+        return pixmap
+
+    def _on_preview_mode_changed(self, mode: PreviewMode):
+        """Handle preview mode toggle."""
+        self.current_mode = mode
+        mode_name = "HD" if mode == PreviewMode.HD else "Preview"
+
+        logger.info(f"Preview mode changed to: {mode_name}", "PreviewWidget")
+
+        # Reload current image in new mode
+        if self.current_file:
+            logger.debug(f"Reloading current image in {mode_name} mode", "PreviewWidget")
+            self._reload_current_image()
+
+        # Update zoom label
+        self._update_zoom_label()
+
+    def _reload_current_image(self):
+        """Reload the current image in the current preview mode."""
+        if not self.current_file:
+            return
+
+        # Load image in current mode
+        self.original_pixmap = self._get_cached_or_load(
+            self.current_file.path,
+            self.current_mode
+        )
+
+        if self.original_pixmap.isNull():
+            logger.error(f"Failed to reload image: {self.current_file.filename}", "PreviewWidget")
+            self._show_error("Failed to load image")
+            return
+
+        # Re-apply current rotation
+        if self.current_rotation != 0:
+            logger.debug(f"Re-applying rotation: {self.current_rotation}°", "PreviewWidget")
+            transform = QTransform()
+            transform.rotate(self.current_rotation)
+            self.current_pixmap = self.original_pixmap.transformed(
+                transform,
+                Qt.SmoothTransformation
+            )
+        else:
+            self.current_pixmap = self.original_pixmap
+
+        # Update display
+        if self.pixmap_item:
+            self.pixmap_item.setPixmap(self.current_pixmap)
+            self.scene.setSceneRect(QRectF(self.current_pixmap.rect()))
+            self._fit_to_window()
 
     def _rotate_image(self, angle: int):
         """Rotate the current image by specified angle."""
@@ -138,6 +270,7 @@ class PreviewWidget(QWidget):
             return
 
         self.current_rotation = (self.current_rotation + angle) % 360
+        logger.debug(f"Rotating image: {angle}° (total: {self.current_rotation}°)", "PreviewWidget")
 
         transform = QTransform()
         transform.rotate(self.current_rotation)
@@ -168,8 +301,9 @@ class PreviewWidget(QWidget):
     def _update_zoom_label(self):
         """Update the zoom percentage display."""
         zoom_percent = int(self.view.zoom_factor * 100)
+        mode_text = "HD Mode" if self.current_mode == PreviewMode.HD else "Preview Mode"
         self.zoom_label.setText(
-            f"Zoom: {zoom_percent}% • Use mouse wheel to zoom • Drag to pan"
+            f"Zoom: {zoom_percent}% • {mode_text} • Use mouse wheel to zoom • Drag to pan"
         )
 
     def show_image(self, image_file: ImageFile):
@@ -177,8 +311,15 @@ class PreviewWidget(QWidget):
         self.current_file = image_file
         self.current_rotation = 0
 
+        mode_name = "HD" if self.current_mode == PreviewMode.HD else "Preview"
+        logger.info(f"Loading image: {image_file.filename} ({mode_name} mode)", "PreviewWidget")
+
         try:
-            self.original_pixmap = self._load_image_with_exif_fix(image_file.path)
+            # Load image in current mode (with caching)
+            self.original_pixmap = self._get_cached_or_load(
+                image_file.path,
+                self.current_mode
+            )
 
             if self.original_pixmap.isNull():
                 self._show_error("Failed to load image")
@@ -201,7 +342,10 @@ class PreviewWidget(QWidget):
             # Connect wheel event to update label
             self.view.wheelEvent = self._create_wheel_handler()
 
+            logger.success(f"Image displayed successfully: {image_file.filename}", "PreviewWidget")
+
         except Exception as e:
+            logger.error(f"Error loading image {image_file.filename}: {e}", "PreviewWidget")
             self._show_error(f"Error loading image: {e}")
 
     def _create_wheel_handler(self):
@@ -216,6 +360,8 @@ class PreviewWidget(QWidget):
 
     def clear_preview(self):
         """Clear the preview display."""
+        logger.debug("Clearing preview display", "PreviewWidget")
+
         self.current_file = None
         self.current_pixmap = None
         self.original_pixmap = None

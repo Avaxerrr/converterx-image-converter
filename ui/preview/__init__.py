@@ -8,9 +8,11 @@ Each component is responsible for a specific aspect of image preview functionali
 from .preview_widget import PreviewWidget
 from .image_graphics_view import ImageGraphicsView
 from .preview_toolbar import PreviewToolbar
+from .preview_types import PreviewMode
 
 __all__ = [
     'PreviewWidget',
     'ImageGraphicsView',
-    'PreviewToolbar'
+    'PreviewToolbar',
+    'PreviewMode'
 ]

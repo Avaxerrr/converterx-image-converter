@@ -915,3 +915,44 @@ QLabel#dragHintLabel[dragging="true"] {
     border: 2px dashed #4CAF50;
     background-color: rgba(76, 175, 80, 0.08);
 }
+
+/* ============================================
+   HD TOGGLE BUTTON - ACTIVE STATE ONLY
+   ============================================ */
+
+/* Inactive state - blend with other buttons (transparent) */
+QToolButton#hdToggleButton {
+    background-color: transparent;
+    border: none;
+    color: #cccccc;
+}
+
+QToolButton#hdToggleButton:hover {
+    background-color: rgba(255, 255, 255, 0.05);  /* Subtle hover like other buttons */
+    border: none;
+}
+
+QToolButton#hdToggleButton:pressed {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+/* Active/Checked state - HD Mode enabled (HIGHLIGHTED) */
+QToolButton#hdToggleButton:checked {
+    background-color: #094771;  /* Blue background */
+    border: 0px solid #007acc;   /* Thicker blue border */
+    color: #ffffff;              /* White text/icon */
+    border-radius: 3px;
+}
+
+QToolButton#hdToggleButton:checked:hover {
+    background-color: #0e639c;  /* Lighter blue on hover */
+    border-color: #0098ff;
+}
+
+/* Disabled state */
+QToolButton#hdToggleButton:disabled {
+    background-color: transparent;
+    border: none;
+    color: #666666;
+}
+
