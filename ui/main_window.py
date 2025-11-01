@@ -12,7 +12,7 @@ from ui.log_window import LogWindow
 from utils.logger import logger, LogLevel
 
 from ui.file_list_widget import FileListWidget
-from ui.preview_widget import PreviewWidget
+from ui.preview import PreviewWidget
 from ui.settings import SettingsPanel
 from utils.file_utils import load_image_files, SUPPORTED_FORMATS
 from workers.conversion_worker import ConversionWorker

@@ -1,6 +1,6 @@
 from .main_window import MainWindow
 from .file_list_widget import FileListWidget
-from .preview_widget import PreviewWidget
+from .preview import PreviewWidget
 from .settings import SettingsPanel
 from .metadata_dialog import MetadataDialog
 
