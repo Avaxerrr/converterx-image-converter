@@ -949,10 +949,16 @@ QToolButton#hdToggleButton:checked:hover {
     border-color: #0098ff;
 }
 
-/* Disabled state */
+/* Disabled state - VERY OBVIOUS */
 QToolButton#hdToggleButton:disabled {
     background-color: transparent;
-    border: none;
-    color: #666666;
+    border: 0px solid #3e3e42;     /* Visible border */
+    border-radius: 3px;
+    color: #555555;                 /* Much darker/grayed out */
+    opacity: 0.4;                   /* Semi-transparent */
+}
+
+QToolButton#hdToggleButton:disabled QIcon {
+    opacity: 0.3;                   /* Gray out the icon */
 }
 

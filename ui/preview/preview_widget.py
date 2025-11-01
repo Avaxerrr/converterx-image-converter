@@ -33,6 +33,7 @@ class PreviewWidget(QWidget):
         self.current_rotation: int = 0
         self.original_pixmap: QPixmap = None
         self.current_mode: PreviewMode = PreviewMode.PREVIEW
+        self.user_preferred_mode: PreviewMode = PreviewMode.PREVIEW  # User's manual choice
 
         # Image caches (path -> QPixmap)
         self.preview_cache: Dict[Path, QPixmap] = {}
@@ -105,6 +106,12 @@ class PreviewWidget(QWidget):
         super().resizeEvent(event)
         self._position_floating_toolbar()
 
+    def _image_needs_hd_mode(self, image_file: ImageFile) -> bool:
+        """Check if image is large enough to benefit from HD mode."""
+        max_dimension = max(image_file.width, image_file.height)
+        needs_hd = max_dimension > self.PREVIEW_MAX_DIMENSION
+        return needs_hd
+
     def _load_image_with_exif_fix(self, image_path: Path, preview_mode: bool = False) -> QPixmap:
         """
         Load image using PIL (supports AVIF) and convert to QPixmap with EXIF orientation fix.
@@ -134,7 +141,7 @@ class PreviewWidget(QWidget):
                         )
                         logger.debug(
                             f"Downscaled {image_path.name}: {original_size} → "
-                            f"({pil_image.width}x{pil_image.height})",
+                            f"({pil_image.width}×{pil_image.height})",
                             "ImageLoader"
                         )
                     else:
@@ -216,11 +223,24 @@ class PreviewWidget(QWidget):
         return pixmap
 
     def _on_preview_mode_changed(self, mode: PreviewMode):
-        """Handle preview mode toggle."""
-        self.current_mode = mode
+        """Handle preview mode toggle (user clicked HD button)."""
+        # Save user's preference
+        self.user_preferred_mode = mode
         mode_name = "HD" if mode == PreviewMode.HD else "Preview"
+        logger.info(f"User preference changed to: {mode_name}", "PreviewWidget")
 
-        logger.info(f"Preview mode changed to: {mode_name}", "PreviewWidget")
+        # Check if current image supports HD mode
+        if self.current_file and not self._image_needs_hd_mode(self.current_file):
+            logger.warning(
+                f"HD mode not available: {self.current_file.filename} is too small "
+                f"({self.current_file.width}×{self.current_file.height})",
+                "PreviewWidget"
+            )
+            # Revert toolbar button state
+            self.toolbar.set_preview_mode(PreviewMode.PREVIEW)
+            return
+
+        self.current_mode = mode
 
         # Reload current image in new mode
         if self.current_file:
@@ -234,6 +254,9 @@ class PreviewWidget(QWidget):
         """Reload the current image in the current preview mode."""
         if not self.current_file:
             return
+
+        mode_name = "HD" if self.current_mode == PreviewMode.HD else "Preview"
+        logger.debug(f"Reloading image in {mode_name} mode (zoom will reset)", "PreviewWidget")
 
         # Load image in current mode
         self.original_pixmap = self._get_cached_or_load(
@@ -262,7 +285,11 @@ class PreviewWidget(QWidget):
         if self.pixmap_item:
             self.pixmap_item.setPixmap(self.current_pixmap)
             self.scene.setSceneRect(QRectF(self.current_pixmap.rect()))
+
+            # Always fit to window on mode switch (clean, predictable behavior)
             self._fit_to_window()
+
+            logger.info(f"Image reloaded in {mode_name} mode and fitted to window", "PreviewWidget")
 
     def _rotate_image(self, angle: int):
         """Rotate the current image by specified angle."""
@@ -301,7 +328,15 @@ class PreviewWidget(QWidget):
     def _update_zoom_label(self):
         """Update the zoom percentage display."""
         zoom_percent = int(self.view.zoom_factor * 100)
-        mode_text = "HD Mode" if self.current_mode == PreviewMode.HD else "Preview Mode"
+
+        # Show appropriate mode text
+        if self.current_file and not self._image_needs_hd_mode(self.current_file):
+            # Small image - already at full resolution
+            mode_text = f"Full Resolution (≤{self.PREVIEW_MAX_DIMENSION}px)"
+        else:
+            # Large image - show current mode
+            mode_text = "HD Mode (Full Resolution)" if self.current_mode == PreviewMode.HD else "Preview Mode (Optimized)"
+
         self.zoom_label.setText(
             f"Zoom: {zoom_percent}% • {mode_text} • Use mouse wheel to zoom • Drag to pan"
         )
@@ -311,11 +346,26 @@ class PreviewWidget(QWidget):
         self.current_file = image_file
         self.current_rotation = 0
 
-        mode_name = "HD" if self.current_mode == PreviewMode.HD else "Preview"
-        logger.info(f"Loading image: {image_file.filename} ({mode_name} mode)", "PreviewWidget")
+        # Check if this image needs HD mode
+        hd_available = self._image_needs_hd_mode(image_file)
+
+        if hd_available:
+            # Use user's preferred mode for large images
+            self.current_mode = self.user_preferred_mode
+            logger.info(
+                f"Loading image: {image_file.filename} ({self.current_mode.value} mode, HD available)",
+                "PreviewWidget"
+            )
+        else:
+            # Force Preview mode for small images (override preference)
+            self.current_mode = PreviewMode.PREVIEW
+            logger.info(
+                f"Loading image: {image_file.filename} (Preview mode, image is {image_file.width}×{image_file.height}, HD not needed)",
+                "PreviewWidget"
+            )
 
         try:
-            # Load image in current mode (with caching)
+            # Load image in determined mode (with caching)
             self.original_pixmap = self._get_cached_or_load(
                 image_file.path,
                 self.current_mode
@@ -338,6 +388,31 @@ class PreviewWidget(QWidget):
             self.toolbar.show()
             self._position_floating_toolbar()
             self.toolbar.enable_buttons(True)
+
+            # Update toolbar button state to match current mode
+            self.toolbar.set_preview_mode(self.current_mode)
+
+            # Enable/disable HD toggle based on image size
+            if hd_available:
+                self.toolbar.hd_toggle_btn.setEnabled(True)
+                self.toolbar.hd_toggle_btn.setToolTip("Toggle HD Mode (Full Resolution)")
+                logger.debug(
+                    f"HD mode available for {image_file.filename} "
+                    f"({image_file.width}×{image_file.height})",
+                    "PreviewWidget"
+                )
+            else:
+                self.toolbar.hd_toggle_btn.setEnabled(False)
+                self.toolbar.hd_toggle_btn.setToolTip(
+                    f"Image is already at full resolution\n"
+                    f"({image_file.width}×{image_file.height} ≤ {self.PREVIEW_MAX_DIMENSION}px)\n"
+                    f"HD mode only available for larger images"
+                )
+                logger.debug(
+                    f"HD mode disabled for {image_file.filename} "
+                    f"({image_file.width}×{image_file.height} ≤ {self.PREVIEW_MAX_DIMENSION}px)",
+                    "PreviewWidget"
+                )
 
             # Connect wheel event to update label
             self.view.wheelEvent = self._create_wheel_handler()
