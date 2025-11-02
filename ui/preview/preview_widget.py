@@ -88,23 +88,37 @@ class PreviewWidget(QWidget):
         layout.addWidget(self.zoom_label)
 
     def _position_floating_toolbar(self):
-        """Position the floating toolbar in the top-right corner."""
+        """Position the floating toolbar in the top-right corner of the preview area."""
         if hasattr(self, 'toolbar'):
             margin_right = 16
             margin_top = 12
+
+            # Use self.width() instead of self.view.width() for proper positioning
+            # relative to the entire PreviewWidget container
             toolbar_width = self.toolbar.sizeHint().width()
             toolbar_height = self.toolbar.sizeHint().height()
 
-            x = self.view.width() - toolbar_width - margin_right
+            # Position relative to PreviewWidget, not the view
+            x = self.width() - toolbar_width - margin_right
             y = margin_top
 
             self.toolbar.move(x, y)
             self.toolbar.raise_()
 
+            logger.debug(
+                f"Toolbar positioned: x={x}, y={y} (widget_width={self.width()}, toolbar_width={toolbar_width})",
+                source="PreviewWidget"
+            )
+
     def resizeEvent(self, event):
-        """Handle widget resize to reposition toolbar."""
+        """Handle widget resize - update overlay geometry."""
         super().resizeEvent(event)
+
+        # Reposition toolbar when widget resizes
         self._position_floating_toolbar()
+
+        # Update loading overlay geometry
+        self._update_loading_overlay_geometry()
 
     def _image_needs_hd_mode(self, image_file: ImageFile) -> bool:
         """Check if image is large enough to benefit from HD mode."""
@@ -460,3 +474,115 @@ class PreviewWidget(QWidget):
     def set_toolbar_icons(self, rotate_left: str, rotate_right: str, fit_window: str, metadata: str):
         """Set custom icons for toolbar buttons."""
         self.toolbar.set_icons(rotate_left, rotate_right, fit_window, metadata)
+
+    def display_output_preview(self, pixmap: QPixmap):
+        """
+        Display output preview pixmap (externally generated).
+
+        This is a separate display path from show_image() for output previews.
+        Used by MainWindow when output preview is ready from worker thread.
+
+        Args:
+            pixmap: Output preview pixmap with settings applied (quality, scale, compression)
+        """
+        logger.info(
+            f"Displaying output preview: {pixmap.width()}×{pixmap.height()}",
+            source="PreviewWidget"
+        )
+
+        # Clear current display
+        self.scene.clear()
+
+        # Store as current pixmap (so rotation/zoom work)
+        self.current_pixmap = pixmap
+        self.original_pixmap = pixmap  # For rotation to work
+        self.current_rotation = 0  # Reset rotation for new preview
+
+        # Add to scene
+        self.pixmap_item = QGraphicsPixmapItem(pixmap)
+        self.scene.addItem(self.pixmap_item)
+
+        # Update scene bounds
+        self.scene.setSceneRect(QRectF(pixmap.rect()))
+
+        # Fit to window (clean display)
+        self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        self.view.zoom_factor = 1.0
+
+        # ⭐ UPDATED: More informative label with exclusions
+        self.zoom_label.setText(
+            f"📸 Output Preview (Approx.) • {pixmap.width()} × {pixmap.height()} • "
+            f"Settings applied • ⚠ Excludes: Target size, Method/Speed • "
+            f"Use mouse wheel to zoom"
+        )
+
+        # Make sure toolbar is visible and enabled
+        self.toolbar.show()
+        self._position_floating_toolbar()
+        self.toolbar.enable_buttons(True)
+
+        self._position_floating_toolbar()
+
+        logger.success(
+            f"Output preview displayed successfully ({pixmap.width()}×{pixmap.height()})",
+            source="PreviewWidget"
+        )
+
+    def show_loading_overlay(self, message: str = "Generating output preview..."):
+        """
+        Show loading overlay on preview widget.
+
+        Args:
+            message: Loading message to display
+        """
+        # Create overlay if it doesn't exist
+        if not hasattr(self, 'loading_overlay'):
+            self._create_loading_overlay()
+
+        # Update message and show
+        self.loading_label.setText(message)
+        self.loading_overlay.show()
+        self.loading_overlay.raise_()  # Bring to front
+
+        logger.debug(f"Loading overlay shown: {message}", source="PreviewWidget")
+
+    def hide_loading_overlay(self):
+        """Hide loading overlay."""
+        if hasattr(self, 'loading_overlay'):
+            self.loading_overlay.hide()
+            logger.debug("Loading overlay hidden", source="PreviewWidget")
+
+    def _create_loading_overlay(self):
+        """Create the loading overlay widget (called once)."""
+        from PySide6.QtWidgets import QLabel
+        from PySide6.QtCore import Qt
+
+        # Semi-transparent overlay
+        self.loading_overlay = QWidget(self)
+        self.loading_overlay.setObjectName("loadingOverlay")  # QSS styling
+
+        # Loading label
+        self.loading_label = QLabel("Generating output preview...", self.loading_overlay)
+        self.loading_label.setObjectName("loadingOverlayLabel")  # QSS styling
+        self.loading_label.setAlignment(Qt.AlignCenter)
+
+        # Position overlay (will be updated in resizeEvent)
+        self._update_loading_overlay_geometry()
+
+        # Start hidden
+        self.loading_overlay.hide()
+
+        logger.debug("Loading overlay created", source="PreviewWidget")
+
+    def _update_loading_overlay_geometry(self):
+        """Update loading overlay size to match widget."""
+        if hasattr(self, 'loading_overlay'):
+            # Make overlay cover entire preview area
+            self.loading_overlay.setGeometry(self.rect())
+
+            # Center the label
+            label_width = 400
+            label_height = 100
+            x = (self.width() - label_width) // 2
+            y = (self.height() - label_height) // 2
+            self.loading_label.setGeometry(x, y, label_width, label_height)

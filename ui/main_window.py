@@ -18,6 +18,11 @@ from utils.file_utils import load_image_files, SUPPORTED_FORMATS
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
 
+from collections import OrderedDict
+from PIL import Image, ImageOps
+from workers.output_preview_worker import OutputPreviewWorker
+
+
 
 class MainWindow(QMainWindow):
     """Main application window."""
@@ -31,13 +36,28 @@ class MainWindow(QMainWindow):
         # Created on-demand log
         self.log_window = None
 
+        # OUTPUT PREVIEW: Debounce timer (500ms delay)
+        self.output_preview_debounce_timer = QTimer()
+        self.output_preview_debounce_timer.setSingleShot(True)
+        self.output_preview_debounce_timer.timeout.connect(self._generate_output_preview)
+
+        logger.debug("Output preview debounce timer initialized (500ms)", source="MainWindow")
+
         self._setup_ui()
         self._connect_signals()
+
+        # Initialize settings from settings panel AFTER signals are connected
+        self.current_settings = self.settings_panel.get_settings()
+        logger.info(
+            f"Initial settings loaded: {self.current_settings.output_format.value} "
+            f"Q{self.current_settings.quality}",
+            source="MainWindow"
+        )
 
         # logger hotkey
         self._setup_logger_hotkey()
 
-        # ← ADD THIS TEST LOG
+        # Test log
         logger.info("ConverterX started successfully", source="App")
 
         self.file_list.files_dropped.connect(self._on_files_dropped)
@@ -97,6 +117,13 @@ class MainWindow(QMainWindow):
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
         self.settings_panel.convert_requested.connect(self._on_convert_selected)
 
+        # OUTPUT PREVIEW: Button toggle signal
+        self.preview.toolbar.output_preview_toggled.connect(
+            self._on_output_preview_toggled
+        )
+
+        logger.debug("Output preview signals connected", source="MainWindow")
+
     def _on_add_files(self):
         """Handle Add Files button click."""
         formats = " ".join([f"*{ext}" for ext in SUPPORTED_FORMATS])
@@ -155,8 +182,21 @@ class MainWindow(QMainWindow):
         self.settings_panel.set_convert_enabled(has_selection)
 
     def _on_settings_changed(self, settings: ConversionSettings):
-        """Handle settings change."""
+        """
+        Handle settings change.
+
+        MODIFIED: Now triggers output preview regeneration if active.
+        """
         self.current_settings = settings
+
+        # If output preview is active, restart debounce timer
+        if self.preview.toolbar.output_preview_btn.isChecked():
+            logger.debug(
+                "Settings changed while output preview active - restarting debounce timer",
+                source="MainWindow"
+            )
+            self.output_preview_debounce_timer.stop()
+            self.output_preview_debounce_timer.start(500)  # 500ms delay
 
     def _on_convert_selected(self):
         """Convert currently selected file."""
@@ -173,10 +213,6 @@ class MainWindow(QMainWindow):
             )
 
         if not selected_file:
-            return
-
-        if not self.current_settings:
-            QMessageBox.warning(self, "No Settings", "Please configure output settings first.")
             return
 
         output_folder = self.settings_panel.get_output_folder()
@@ -301,3 +337,152 @@ class MainWindow(QMainWindow):
             source="MainWindow"
         )
         self.status_bar.showMessage(f"Added {len(loaded_files)} file(s)", 2000)
+
+    # ==========================================
+    #  OUTPUT PREVIEW METHODS (NEW)
+    # ==========================================
+
+    def _on_output_preview_toggled(self, checked: bool):
+        """
+        Handle output preview button toggle.
+
+        Args:
+            checked: True if output preview enabled, False if disabled
+        """
+        if checked:
+            # User enabled output preview - generate it
+            logger.info("Output preview enabled by user", source="MainWindow")
+
+            # Check if image is selected
+            selected_file = self.file_list.get_selected_file()
+            if not selected_file:
+                logger.warning("No image selected for output preview", source="MainWindow")
+                self.preview.toolbar.output_preview_btn.setChecked(False)
+                QMessageBox.information(
+                    self,
+                    "No Image Selected",
+                    "Please select an image first to preview output."
+                )
+                return
+
+            # Generate preview immediately (no debounce on button click)
+            self._generate_output_preview()
+        else:
+            # User disabled output preview - revert to original preview
+            logger.info("Output preview disabled - reverting to original", source="MainWindow")
+
+            # Stop any pending preview generation
+            self.output_preview_debounce_timer.stop()
+
+            # Reload original preview
+            selected_file = self.file_list.get_selected_file()
+            if selected_file:
+                self.preview.show_image(selected_file)
+                logger.debug(
+                    f"Reverted to original preview: {selected_file.filename}",
+                    source="MainWindow"
+                )
+
+    def _generate_output_preview(self):
+        """
+        Generate output preview in worker thread.
+
+        This method is called either:
+        1. Immediately when output preview button is clicked
+        2. After 500ms debounce when settings change (if output preview active)
+        """
+        # Get selected file
+        selected_file = self.file_list.get_selected_file()
+        if not selected_file:
+            logger.warning("No image selected for preview generation", source="MainWindow")
+            return
+
+        # Get current settings
+        if not self.current_settings:
+            logger.warning("No settings configured for preview generation", source="MainWindow")
+            return
+
+        logger.info(
+            f"Generating output preview for {selected_file.filename} "
+            f"(Format: {self.current_settings.output_format.value}, "
+            f"Quality: {self.current_settings.quality}, "
+            f"Scale: {self.current_settings.resize_percentage}%)",
+            source="MainWindow"
+        )
+
+        # ⭐ NEW: Show loading overlay
+        self.preview.show_loading_overlay("⏳ Generating output preview...")
+
+        # Update status bar
+        self.status_bar.showMessage(f"⏳ Generating output preview for {selected_file.filename}...")
+
+        # Create worker
+        worker = OutputPreviewWorker(selected_file.path, self.current_settings)
+
+        # Connect signals
+        worker.signals.finished.connect(self._on_output_preview_ready)
+        worker.signals.error.connect(self._on_output_preview_error)
+
+        # Start in thread pool (non-blocking)
+        self.threadpool.start(worker)
+
+        logger.debug("Output preview worker started in thread pool", source="MainWindow")
+
+
+        logger.debug("Output preview worker started in thread pool", source="MainWindow")
+
+    def _on_output_preview_ready(self, pixmap):
+        """
+        Handle output preview generation complete.
+
+        Args:
+            pixmap: Generated output preview pixmap
+        """
+        logger.success(
+            f"Output preview ready: {pixmap.width()}×{pixmap.height()}",
+            source="MainWindow"
+        )
+
+        # ⭐ NEW: Hide loading overlay
+        self.preview.hide_loading_overlay()
+
+        # Display in preview widget
+        self.preview.display_output_preview(pixmap)
+
+        # Update status bar
+        selected_file = self.file_list.get_selected_file()
+        if selected_file:
+            self.status_bar.showMessage(
+                f"✓ Output preview ready for {selected_file.filename}",
+                3000
+            )
+
+    def _on_output_preview_error(self, error_msg: str):
+        """
+        Handle output preview generation error.
+
+        Args:
+            error_msg: Error message from worker
+        """
+        logger.error(f"Output preview generation failed: {error_msg}", source="MainWindow")
+
+        # ⭐ NEW: Hide loading overlay
+        self.preview.hide_loading_overlay()
+
+        # Update status bar
+        self.status_bar.showMessage("✗ Output preview generation failed", 3000)
+
+        # Show error to user
+        QMessageBox.warning(
+            self,
+            "Preview Error",
+            f"Failed to generate output preview:\n\n{error_msg}"
+        )
+
+        # Uncheck output preview button
+        self.preview.toolbar.output_preview_btn.setChecked(False)
+
+        # Revert to original preview
+        selected_file = self.file_list.get_selected_file()
+        if selected_file:
+            self.preview.show_image(selected_file)

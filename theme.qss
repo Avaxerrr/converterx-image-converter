@@ -962,3 +962,65 @@ QToolButton#hdToggleButton:disabled QIcon {
     opacity: 0.3;                   /* Gray out the icon */
 }
 
+/* ============================================
+   OUTPUT PREVIEW TOGGLE BUTTON - MATCH HD BUTTON STYLING
+   ============================================ */
+
+/* Inactive state - blend with other buttons (transparent) */
+QToolButton#outputPreviewButton {
+    background-color: transparent;
+    border: none;
+    color: #cccccc;
+}
+
+QToolButton#outputPreviewButton:hover {
+    background-color: rgba(255, 255, 255, 0.05);  /* Subtle hover like other buttons */
+    border: none;
+}
+
+QToolButton#outputPreviewButton:pressed {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+/* Active/Checked state - Output Preview enabled (HIGHLIGHTED) */
+QToolButton#outputPreviewButton:checked {
+    background-color: #094771;  /* Blue background (same as HD) */
+    border: 0px solid #007acc;   /* Blue border */
+    color: #ffffff;              /* White text/icon */
+    border-radius: 3px;
+}
+
+QToolButton#outputPreviewButton:checked:hover {
+    background-color: #0e639c;  /* Lighter blue on hover */
+    border-color: #0098ff;
+}
+
+/* Disabled state - grayed out */
+QToolButton#outputPreviewButton:disabled {
+    background-color: transparent;
+    border: 0px solid #3e3e42;
+    border-radius: 3px;
+    color: #555555;
+    opacity: 0.4;
+}
+
+QToolButton#outputPreviewButton:disabled QIcon {
+    opacity: 0.3;  /* Gray out the icon */
+}
+
+/* ============================================
+   OUTPUT PREVIEW LOADING OVERLAY
+   ============================================ */
+
+/* Semi-transparent overlay covering preview area */
+QWidget#loadingOverlay {
+    background-color: rgba(30, 30, 30, 0.85);
+}
+
+/* Loading message label (centered) */
+QLabel#loadingOverlayLabel {
+    color: #4fc3f7;
+    font-size: 14pt;
+    font-weight: bold;
+    background-color: transparent;
+}

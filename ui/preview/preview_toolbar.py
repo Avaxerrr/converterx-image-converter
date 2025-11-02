@@ -15,6 +15,7 @@ class PreviewToolbar(QWidget):
 
     # Signals for button actions
     preview_mode_changed = Signal(PreviewMode)
+    output_preview_toggled = Signal(bool)  # NEW: Signal for output preview button
     rotate_left_clicked = Signal()
     rotate_right_clicked = Signal()
     fit_to_window_clicked = Signal()
@@ -54,11 +55,39 @@ class PreviewToolbar(QWidget):
         icon_path = Path("icons/hd-preview.svg")
         if icon_path.exists():
             self.hd_toggle_btn.setIcon(QIcon(str(icon_path)))
+            self.hd_toggle_btn.setIconSize(QSize(16, 16))
         else:
             self.hd_toggle_btn.setText("HD")  # Fallback text
             logger.warning(f"HD preview icon not found: {icon_path}", "PreviewToolbar")
 
         toolbar_layout.addWidget(self.hd_toggle_btn)
+
+        # === OUTPUT PREVIEW Toggle Button (NEW - Between HD and Rotate) ===
+        self.output_preview_btn = QToolButton()
+        self.output_preview_btn.setObjectName("outputPreviewButton")
+        # More detailed tooltip
+        self.output_preview_btn.setToolTip(
+            "Toggle Output Preview (Show settings applied)\n\n"
+            "Applied: Quality, Scale %, PNG compression, Lossless\n"
+            "Excluded: Target file size, Max dimensions, Advanced options"
+        )
+        self.output_preview_btn.setFixedSize(button_size)
+        self.output_preview_btn.clicked.connect(self._on_output_preview_clicked)
+        self.output_preview_btn.setEnabled(False)
+        self.output_preview_btn.setCheckable(True)  # Make it a toggle button
+        self.output_preview_btn.setChecked(False)  # Start unchecked
+
+        # Try to load icon
+        output_icon_path = Path("icons/preview.svg")
+        if output_icon_path.exists():
+            self.output_preview_btn.setIcon(QIcon(str(output_icon_path)))
+            self.output_preview_btn.setIconSize(QSize(16, 16))
+            logger.debug(f"Output preview icon loaded: {output_icon_path}", "PreviewToolbar")
+        else:
+            self.output_preview_btn.setText("OUT")  # Fallback text
+            logger.warning(f"Output preview icon not found: {output_icon_path}", "PreviewToolbar")
+
+        toolbar_layout.addWidget(self.output_preview_btn)
 
         # === Existing Buttons (RIGHT SIDE) ===
 
@@ -105,29 +134,55 @@ class PreviewToolbar(QWidget):
         toolbar_layout.addWidget(self.metadata_btn)
 
     def _toggle_preview_mode(self):
-        """Toggle between Preview and HD modes."""
-        old_mode = self.current_mode
+        """
+        Toggle between Preview and HD modes.
 
-        if self.current_mode == PreviewMode.PREVIEW:
+        MODIFIED: Now implements mutual exclusion with output preview button.
+        """
+        # If HD button is clicked and it's being checked
+        if self.hd_toggle_btn.isChecked():
+            # Turn OFF output preview button (mutual exclusion)
+            self.output_preview_btn.setChecked(False)
             self.current_mode = PreviewMode.HD
-            self.hd_toggle_btn.setChecked(True)
             logger.info("Switched to HD mode (full resolution)", "PreviewToolbar")
         else:
+            # HD button unchecked - revert to default preview
             self.current_mode = PreviewMode.PREVIEW
-            self.hd_toggle_btn.setChecked(False)
             logger.info("Switched to Preview mode (optimized)", "PreviewToolbar")
 
         self.preview_mode_changed.emit(self.current_mode)
+
+    def _on_output_preview_clicked(self):
+        """
+        Handle output preview button click.
+
+        NEW: Implements mutual exclusion with HD button.
+        """
+        # If output preview button is being checked
+        if self.output_preview_btn.isChecked():
+            # Turn OFF HD button (mutual exclusion)
+            self.hd_toggle_btn.setChecked(False)
+            self.current_mode = PreviewMode.OUTPUT_PREVIEW
+            logger.info("Output preview enabled (settings will be applied)", "PreviewToolbar")
+        else:
+            # Output preview button unchecked - revert to default preview
+            self.current_mode = PreviewMode.PREVIEW
+            logger.info("Output preview disabled (reverted to thumbnail)", "PreviewToolbar")
+
+        # Emit signal so MainWindow knows to generate/clear preview
+        self.output_preview_toggled.emit(self.output_preview_btn.isChecked())
 
     def set_preview_mode(self, mode: PreviewMode):
         """Set the current preview mode (programmatically)."""
         self.current_mode = mode
         self.hd_toggle_btn.setChecked(mode == PreviewMode.HD)
+        self.output_preview_btn.setChecked(mode == PreviewMode.OUTPUT_PREVIEW)
         logger.debug(f"Preview mode set to: {mode.value}", "PreviewToolbar")
 
     def enable_buttons(self, enabled: bool):
         """Enable or disable all toolbar buttons."""
         self.hd_toggle_btn.setEnabled(enabled)
+        self.output_preview_btn.setEnabled(enabled)  # NEW: Enable/disable output preview button
         self.rotate_left_btn.setEnabled(enabled)
         self.rotate_right_btn.setEnabled(enabled)
         self.fit_btn.setEnabled(enabled)

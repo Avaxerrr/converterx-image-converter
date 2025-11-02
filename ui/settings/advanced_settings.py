@@ -36,7 +36,7 @@ class AdvancedSettingsWidget(QWidget):
         self.webp_method_spin.setMaximum(6)
         self.webp_method_spin.setValue(6)
         self.webp_method_spin.setToolTip("0=Fast, 6=Best quality")
-        self.webp_method_spin.valueChanged.connect(self.settings_changed.emit)
+        self.webp_method_spin.valueChanged.connect(lambda: self.settings_changed.emit())  # FIXED
         webp_method_layout.addWidget(self.webp_method_spin)
         webp_method_layout.addStretch()
         self.webp_method_widget = QWidget()
@@ -50,7 +50,7 @@ class AdvancedSettingsWidget(QWidget):
         self.webp_subsampling_combo.addItems(["4:4:4", "4:2:2", "4:2:0"])
         self.webp_subsampling_combo.setCurrentIndex(2)  # Default to 4:2:0
         self.webp_subsampling_combo.setToolTip("Chroma subsampling (4:4:4=Best, 4:2:0=Smallest)")
-        self.webp_subsampling_combo.currentIndexChanged.connect(self.settings_changed.emit)
+        self.webp_subsampling_combo.currentIndexChanged.connect(lambda: self.settings_changed.emit())  # FIXED
         webp_subsampling_layout.addWidget(self.webp_subsampling_combo)
         webp_subsampling_layout.addStretch()
         self.webp_subsampling_widget = QWidget()
@@ -65,7 +65,7 @@ class AdvancedSettingsWidget(QWidget):
         self.avif_speed_spin.setMaximum(10)
         self.avif_speed_spin.setValue(4)
         self.avif_speed_spin.setToolTip("0=Slowest/Best, 10=Fastest")
-        self.avif_speed_spin.valueChanged.connect(self.settings_changed.emit)
+        self.avif_speed_spin.valueChanged.connect(lambda: self.settings_changed.emit())  # FIXED
         avif_speed_layout.addWidget(self.avif_speed_spin)
         avif_speed_layout.addStretch()
         self.avif_speed_widget = QWidget()
@@ -79,7 +79,7 @@ class AdvancedSettingsWidget(QWidget):
         self.avif_range_combo.addItems(["Limited", "Full"])
         self.avif_range_combo.setCurrentIndex(1)  # Default to Full
         self.avif_range_combo.setToolTip("Color range (Full=Better quality)")
-        self.avif_range_combo.currentIndexChanged.connect(self.settings_changed.emit)
+        self.avif_range_combo.currentIndexChanged.connect(lambda: self.settings_changed.emit())  # FIXED
         avif_range_layout.addWidget(self.avif_range_combo)
         avif_range_layout.addStretch()
         self.avif_range_widget = QWidget()
