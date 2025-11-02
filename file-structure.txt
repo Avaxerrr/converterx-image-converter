@@ -2,56 +2,40 @@ Image Converter/
 +--- core
 |    +--- __init__.py
 |    +--- converter.py
-|    \--- format_settings.py
+|    +--- format_settings.py
+|    \--- output_preview_generator.py
 |    
 +--- fonts
-|    +--- Inter-VariableFont_opsz,wght.ttf
-|    +--- Inter_18pt-Bold.ttf
-|    +--- Inter_18pt-Medium.ttf
-|    +--- Inter_18pt-Regular.ttf
-|    +--- Inter_18pt-SemiBold.ttf
-|    +--- Inter_28pt-Regular.ttf
-|    +--- Manrope-Bold.ttf
-|    +--- Manrope-ExtraBold.ttf
-|    +--- Manrope-ExtraLight.ttf
-|    +--- Manrope-Light.ttf
-|    +--- Manrope-Medium.ttf
-|    +--- Manrope-Regular.ttf
-|    +--- Manrope-SemiBold.ttf
-|    +--- SFMonoBold.otf
-|    +--- SFMonoMedium.otf
-|    +--- SFMonoRegular.otf
-|    +--- SFMonoSemibold.otf
-|    +--- SFPRODISPLAYMEDIUM.OTF
-|    \--- SFPRODISPLAYREGULAR.OTF
+|    \--- Inter-VariableFont_opsz,wght.ttf
 |    
 +--- icons
 |    +--- 3-dots.png
 |    +--- __init__.py
-|    +--- add_files.png
-|    +--- add_files.svg
-|    +--- arrow-down-dark.png
+|    +--- add_photo.svg
 |    +--- arrow-down-white.png
-|    +--- arrow-up-dark.png
 |    +--- arrow-up-white.png
-|    +--- delete_files.png
-|    +--- delete_files.svg
-|    +--- frame.svg
+|    +--- center_focus.svg
+|    +--- delete.svg
 |    +--- hd-preview.svg
+|    +--- hd-previewads.svg
 |    +--- info.svg
-|    +--- jpg_icon.png
-|    +--- png_icon.png
-|    +--- rotate-left.svg
-|    +--- rotate-right.svg
-|    +--- settings-button.png
-|    +--- settings-button.svg
-|    \--- webp_icon.png
+|    +--- preview.svg
+|    +--- previewasdasd.svg
+|    +--- rotate_left.svg
+|    \--- rotate_right.svg
 |    
 +--- models
 |    +--- __init__.py
 |    \--- image_file.py
 |    
 +--- ui
+|    +--- preview
+|    |    +--- __init__.py
+|    |    +--- image_graphics_view.py
+|    |    +--- preview_toolbar.py
+|    |    +--- preview_types.py
+|    |    \--- preview_widget.py
+|    |    
 |    +--- settings
 |    |    +--- __init__.py
 |    |    +--- advanced_settings.py
@@ -64,9 +48,7 @@ Image Converter/
 |    +--- file_list_widget.py
 |    +--- log_window.py
 |    +--- main_window.py
-|    +--- metadata_dialog.py
-|    +--- preview_widget.py
-|    \--- settings_panel(old no use).py
+|    \--- metadata_dialog.py
 |    
 +--- utils
 |    +--- __init__.py
@@ -76,10 +58,9 @@ Image Converter/
 +--- workers
 |    +--- __init__.py
 |    +--- conversion_worker.py
+|    +--- output_preview_worker.py
 |    \--- thumbnail_generator.py
 |    
 +--- file-structure.txt
 +--- main.py
-+--- nuitka-commands.txt
-+--- test_avif.py
 \--- theme.qss

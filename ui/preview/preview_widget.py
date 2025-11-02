@@ -511,8 +511,8 @@ class PreviewWidget(QWidget):
 
         # ⭐ UPDATED: More informative label with exclusions
         self.zoom_label.setText(
-            f"📸 Output Preview (Approx.) • {pixmap.width()} × {pixmap.height()} • "
-            f"Settings applied • ⚠ Excludes: Target size, Method/Speed • "
+            f"Output Preview (Approx.) • "
+            f"⚠ Excludes: Target size, Method/Speed • "
             f"Use mouse wheel to zoom"
         )
 
