@@ -14,12 +14,12 @@ class ImageGraphicsView(QGraphicsView):
         super().__init__(parent)
         self.zoom_factor = 1.0
         self.min_zoom = 0.1
-        self.max_zoom = 10.0
+        self.max_zoom = 100.0
 
         # View settings
         self.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.setRenderHint(QPainter.Antialiasing)
-        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.setRenderHint(QPainter.Antialiasing, True)
+        self.setRenderHint(QPainter.SmoothPixmapTransform, True)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)

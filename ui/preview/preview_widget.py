@@ -330,6 +330,7 @@ class PreviewWidget(QWidget):
     def _fit_to_window(self):
         """Fit image to window size."""
         if self.pixmap_item:
+            self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)  # ADD THIS
             self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
             self.view.zoom_factor = 1.0
             self._update_zoom_label()
@@ -510,7 +511,7 @@ class PreviewWidget(QWidget):
         self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.view.zoom_factor = 1.0
 
-        # ⭐ UPDATED: More informative label with exclusions
+        #  More informative label with exclusions
         self.zoom_label.setText(
             f"Output Preview (Approx.) • "
             f"⚠ Excludes: Target size, Method/Speed • "
