@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QFileDialog, QStatusBar, QMessageBox, QProgressDialog
 )
-from PySide6.QtCore import Qt, QTimer, QThreadPool
+from PySide6.QtCore import Qt, QTimer, QThreadPool, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence
 from pathlib import Path
 from typing import List
@@ -23,7 +23,6 @@ from PIL import Image, ImageOps
 from workers.output_preview_worker import OutputPreviewWorker
 
 
-
 class MainWindow(QMainWindow):
     """Main application window."""
 
@@ -41,10 +40,16 @@ class MainWindow(QMainWindow):
         self.output_preview_debounce_timer.setSingleShot(True)
         self.output_preview_debounce_timer.timeout.connect(self._generate_output_preview)
 
+        # QSettings for persistent window state
+        self.settings = QSettings("ConverterX", "ImageConverter")
+
         logger.debug("Output preview debounce timer initialized (500ms)", source="MainWindow")
 
         self._setup_ui()
         self._connect_signals()
+
+        # Restore window geometry and splitter state
+        self._restore_window_state()
 
         # Initialize settings from settings panel AFTER signals are connected
         self.current_settings = self.settings_panel.get_settings()
@@ -75,30 +80,30 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(central_widget)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Main splitter (3-way)
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setChildrenCollapsible(False)
+        # Main splitter (3-way) - store as instance variable for state persistence
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.setChildrenCollapsible(False)
 
         # Left panel - File list
         self.file_list = FileListWidget()
         self.file_list.setMinimumWidth(250)
-        splitter.addWidget(self.file_list)
+        self.main_splitter.addWidget(self.file_list)
 
         # Center panel - Preview
         self.preview = PreviewWidget()
         self.preview.setMinimumWidth(400)
-        splitter.addWidget(self.preview)
+        self.main_splitter.addWidget(self.preview)
 
         # Right panel - Settings (includes convert button now)
         self.settings_panel = SettingsPanel()
         self.settings_panel.setMinimumWidth(280)
         self.settings_panel.setMaximumWidth(350)
-        splitter.addWidget(self.settings_panel)
+        self.main_splitter.addWidget(self.settings_panel)
 
         # Set initial sizes (25/50/25 split)
-        splitter.setSizes([300, 700, 300])
+        self.main_splitter.setSizes([300, 700, 300])
 
-        layout.addWidget(splitter)
+        layout.addWidget(self.main_splitter)
 
         # Status bar
         self.status_bar = QStatusBar()
@@ -173,7 +178,6 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage(
             f"Viewing: {image_file.filename}", 2000
         )
-
         self.settings_panel.set_current_image(image_file)
 
     def _on_selection_changed(self):
@@ -290,7 +294,6 @@ class MainWindow(QMainWindow):
     def _toggle_log_window(self):
         """Show/hide log window."""
         print("F12 pressed - toggling log window")  # ← ADD THIS FOR DEBUGGING
-
         if self.log_window is None:
             print("Creating new log window")  # ← ADD THIS
             self.log_window = LogWindow(self)
@@ -410,7 +413,7 @@ class MainWindow(QMainWindow):
             source="MainWindow"
         )
 
-        # ⭐ NEW: Show loading overlay
+        # Show loading overlay
         self.preview.show_loading_overlay("⏳ Generating output preview...")
 
         # Update status bar
@@ -443,7 +446,7 @@ class MainWindow(QMainWindow):
             source="MainWindow"
         )
 
-        # ⭐ NEW: Hide loading overlay
+        # Hide loading overlay
         self.preview.hide_loading_overlay()
 
         # Display in preview widget
@@ -466,7 +469,7 @@ class MainWindow(QMainWindow):
         """
         logger.error(f"Output preview generation failed: {error_msg}", source="MainWindow")
 
-        # ⭐ NEW: Hide loading overlay
+        # Hide loading overlay
         self.preview.hide_loading_overlay()
 
         # Update status bar
@@ -486,3 +489,52 @@ class MainWindow(QMainWindow):
         selected_file = self.file_list.get_selected_file()
         if selected_file:
             self.preview.show_image(selected_file)
+
+    def _restore_window_state(self):
+        """
+        Restore window geometry and splitter state from QSettings.
+        Called once during __init__.
+        """
+        # Restore window geometry (position + size)
+        geometry = self.settings.value("window/geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+            logger.info("Window geometry restored from settings", source="MainWindow")
+        else:
+            logger.debug("No saved window geometry found - using defaults", source="MainWindow")
+
+        # Restore splitter state
+        splitter_state = self.settings.value("window/splitter_state")
+        if splitter_state:
+            self.main_splitter.restoreState(splitter_state)
+            logger.info("Splitter state restored from settings", source="MainWindow")
+        else:
+            logger.debug("No saved splitter state found - using defaults", source="MainWindow")
+
+    def _save_window_state(self):
+        """
+        Save window geometry and splitter state to QSettings.
+        Called when window is closing.
+        """
+        # Save window geometry (position + size)
+        self.settings.setValue("window/geometry", self.saveGeometry())
+
+        # Save splitter state
+        self.settings.setValue("window/splitter_state", self.main_splitter.saveState())
+
+        logger.info("Window state saved to settings", source="MainWindow")
+
+    def closeEvent(self, event):
+        """
+        Override closeEvent to save window state before closing.
+
+        Args:
+            event: QCloseEvent
+        """
+        # Save window state before closing
+        self._save_window_state()
+
+        # Accept the close event
+        event.accept()
+
+        logger.info("Application closing - window state saved", source="MainWindow")

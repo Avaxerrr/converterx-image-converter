@@ -168,9 +168,7 @@ class SettingsPanel(QWidget):
             target_size_kb=output_settings['target_size_kb'],
             resize_mode=resize_settings['resize_mode'],
             resize_percentage=resize_settings['resize_percentage'],
-            max_width=resize_settings['max_width'],
-            max_height=resize_settings['max_height'],
-            maintain_aspect_ratio=resize_settings['maintain_aspect_ratio'],
+
             # Advanced settings (format-specific)
             webp_method=advanced_settings.get('webp_method', 6),
             webp_subsampling=advanced_settings.get('webp_subsampling', (2, 2)),

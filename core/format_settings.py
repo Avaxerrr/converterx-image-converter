@@ -15,7 +15,6 @@ class ResizeMode(Enum):
     """Image resize modes."""
     NONE = "none"
     PERCENTAGE = "percentage"
-    MAX_DIMENSIONS = "max_dimensions"
 
 
 @dataclass
@@ -35,9 +34,6 @@ class ConversionSettings:
     # NEW: Resize settings
     resize_mode: ResizeMode = ResizeMode.NONE
     resize_percentage: float = 100.0  # 10-100%
-    max_width: Optional[int] = None
-    max_height: Optional[int] = None
-    maintain_aspect_ratio: bool = True
 
     def to_pillow_kwargs(self, quality_override: Optional[int] = None) -> Dict[str, Any]:
         """

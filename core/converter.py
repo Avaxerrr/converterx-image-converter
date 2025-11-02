@@ -28,7 +28,7 @@ class ImageConverter:
                 logger.log(f"Original image: {original_size[0]}x{original_size[1]}", LogLevel.DEBUG, "Converter")
 
                 # Apply resize if configured
-                img = ImageConverter._apply_resize(img, settings)
+                img = ImageConverter.apply_resize(img, settings)
 
                 if img.size != original_size:
                     logger.log(f"Resized to: {img.size[0]}x{img.size[1]}", LogLevel.INFO, "Converter")
@@ -65,46 +65,21 @@ class ImageConverter:
             return (False, f"Conversion failed: {str(e)}", None)
 
     @staticmethod
-    def _apply_resize(img: Image.Image, settings: ConversionSettings) -> Image.Image:
+    def apply_resize(img: Image.Image, settings: ConversionSettings) -> Image.Image:
         """Apply resize based on settings."""
         if settings.resize_mode == ResizeMode.NONE:
             return img
 
         original_width, original_height = img.size
-        new_width, new_height = original_width, original_height
 
         if settings.resize_mode == ResizeMode.PERCENTAGE:
             scale = settings.resize_percentage / 100.0
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
 
-        elif settings.resize_mode == ResizeMode.MAX_DIMENSIONS:
-            if settings.max_width and settings.max_height:
-                if settings.maintain_aspect_ratio:
-                    # Calculate scale to fit within max dimensions
-                    width_scale = settings.max_width / original_width
-                    height_scale = settings.max_height / original_height
-                    scale = min(width_scale, height_scale, 1.0)  # Don't upscale
-
-                    new_width = int(original_width * scale)
-                    new_height = int(original_height * scale)
-                else:
-                    # Exact dimensions (may distort)
-                    new_width = settings.max_width
-                    new_height = settings.max_height
-            elif settings.max_width:
-                scale = settings.max_width / original_width
-                new_width = settings.max_width
-                new_height = int(original_height * scale) if settings.maintain_aspect_ratio else original_height
-            elif settings.max_height:
-                scale = settings.max_height / original_height
-                new_height = settings.max_height
-                new_width = int(original_width * scale) if settings.maintain_aspect_ratio else original_width
-
-        # Only resize if dimensions actually changed
-        if (new_width, new_height) != (original_width, original_height):
-            # Use high-quality Lanczos resampling
-            return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            # Only resize if dimensions actually changed
+            if (new_width, new_height) != (original_width, original_height):
+                return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         return img
 

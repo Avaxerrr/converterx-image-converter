@@ -12,7 +12,6 @@ Settings Applied:
 
 Settings Skipped (for preview purposes):
 - Target file size (iterative compression)
-- Max dimensions (different from scale %)
 - WebP/AVIF advanced options (subsampling, method, speed, range)
 """
 
