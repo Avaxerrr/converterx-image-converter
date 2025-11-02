@@ -6,6 +6,9 @@ from PySide6.QtCore import Qt, QTimer, QThreadPool, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence
 from pathlib import Path
 from typing import List
+import os
+import subprocess
+import platform
 
 # Logger
 from ui.log_window import LogWindow
@@ -234,7 +237,7 @@ class MainWindow(QMainWindow):
 
         # Show progress in status bar
         self.settings_panel.set_convert_enabled(False)
-        self.status_bar.showMessage(f"⏳ Converting {selected_file.filename}...")
+        self.status_bar.showMessage(f"Converting {selected_file.filename}...")
         self.status_bar.setStyleSheet("background-color: #0e639c; color: white;")
 
         # Create and start worker
@@ -258,18 +261,81 @@ class MainWindow(QMainWindow):
         if self.progress_dialog:
             self.progress_dialog.close()
 
-        msg = (
+        # Create custom message box with buttons
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Conversion Complete")
+        msg_box.setIcon(QMessageBox.Information)
+
+        msg_text = (
             f"✓ {result['input_file'].filename} converted successfully!\n\n"
             f"Original: {result['input_file'].size_str}\n"
             f"Converted: {result['output_size'] / 1024:.1f} KB\n"
             f"Savings: {result['savings_string']}\n\n"
             f"Saved to: {result['output_path']}"
         )
+        msg_box.setText(msg_text)
 
-        QMessageBox.information(self, "Conversion Complete", msg)
+        # Add custom buttons
+        open_folder_btn = msg_box.addButton("Open Folder", QMessageBox.ActionRole)
+        open_image_btn = msg_box.addButton("Open Image", QMessageBox.ActionRole)
+        close_btn = msg_box.addButton("Close", QMessageBox.RejectRole)
+
+        # Show dialog and handle button clicks
+        msg_box.exec()
+
+        clicked_button = msg_box.clickedButton()
+
+        if clicked_button == open_folder_btn:
+            self._open_folder(result['output_path'])
+        elif clicked_button == open_image_btn:
+            self._open_image(result['output_path'])
+
         self.status_bar.showMessage(
             f"Converted: {result['savings_string']}", 5000
         )
+
+    def _open_folder(self, file_path: Path):
+        """Open the folder containing the file in system file explorer."""
+        try:
+            folder_path = file_path.parent
+
+            system = platform.system()
+            if system == "Windows":
+                # Windows: open folder and select file
+                subprocess.run(['explorer', '/select,', str(file_path)])
+            elif system == "Darwin":  # macOS
+                subprocess.run(['open', '-R', str(file_path)])
+            else:  # Linux
+                subprocess.run(['xdg-open', str(folder_path)])
+
+            logger.info(f"Opened folder: {folder_path}", source="MainWindow")
+        except Exception as e:
+            logger.error(f"Failed to open folder: {e}", source="MainWindow")
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"Could not open folder:\n{e}"
+            )
+
+    def _open_image(self, file_path: Path):
+        """Open the image file with default system application."""
+        try:
+            system = platform.system()
+            if system == "Windows":
+                os.startfile(str(file_path))
+            elif system == "Darwin":  # macOS
+                subprocess.run(['open', str(file_path)])
+            else:  # Linux
+                subprocess.run(['xdg-open', str(file_path)])
+
+            logger.info(f"Opened image: {file_path.name}", source="MainWindow")
+        except Exception as e:
+            logger.error(f"Failed to open image: {e}", source="MainWindow")
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"Could not open image:\n{e}"
+            )
 
     def _on_conversion_error(self, error_msg: str):
         """Handle conversion error."""
@@ -414,10 +480,10 @@ class MainWindow(QMainWindow):
         )
 
         # Show loading overlay
-        self.preview.show_loading_overlay("⏳ Generating output preview...")
+        self.preview.show_loading_overlay("Generating output preview...")
 
         # Update status bar
-        self.status_bar.showMessage(f"⏳ Generating output preview for {selected_file.filename}...")
+        self.status_bar.showMessage(f"Generating output preview for {selected_file.filename}...")
 
         # Create worker
         worker = OutputPreviewWorker(selected_file.path, self.current_settings)

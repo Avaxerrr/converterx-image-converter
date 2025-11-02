@@ -1,11 +1,14 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
-    QPushButton, QLabel, QListWidgetItem, QSizePolicy
+    QPushButton, QLabel, QListWidgetItem, QSizePolicy, QMenu
 )
 from PySide6.QtCore import Signal, Qt, QSize, QThreadPool
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon, QPixmap, QAction
 from typing import List
 from pathlib import Path
+import subprocess
+import platform
+import os
 from models.image_file import ImageFile
 from workers.thumbnail_generator import ThumbnailGenerator
 
@@ -25,6 +28,10 @@ class FileListWidget(QWidget):
 
         # Enable drag and drop
         self.setAcceptDrops(True)
+
+        # Enable context menu
+        self.list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.list_widget.customContextMenuRequested.connect(self._show_context_menu)
 
     def _setup_ui(self):
         """Initialize the user interface."""
@@ -217,3 +224,59 @@ class FileListWidget(QWidget):
         """Update the status label with file count."""
         count = len(self.image_files)
         self.status_label.setText(f"{count}")
+
+    def _show_context_menu(self, position):
+        """Show context menu on right-click."""
+        # Get the item at the clicked position
+        item = self.list_widget.itemAt(position)
+
+        if not item:
+            return  # No item clicked, don't show menu
+
+        # Get the corresponding image file
+        row = self.list_widget.row(item)
+        if row < 0 or row >= len(self.image_files):
+            return
+
+        image_file = self.image_files[row]
+
+        # Create context menu
+        menu = QMenu(self)
+
+        # Add "Open Folder Location" action
+        open_folder_action = QAction("Open Folder Location", self)
+        open_folder_action.triggered.connect(lambda: self._open_folder_location(image_file))
+        menu.addAction(open_folder_action)
+
+        # Add "Edit" action (placeholder)
+        edit_action = QAction("Edit Photo", self)
+        edit_action.triggered.connect(lambda: self._edit_image(image_file))
+        menu.addAction(edit_action)
+
+        # Show menu at cursor position
+        menu.exec(self.list_widget.mapToGlobal(position))
+
+    def _open_folder_location(self, image_file: ImageFile):
+        """Open the folder containing the image file."""
+        try:
+            file_path = image_file.path
+
+            system = platform.system()
+            if system == "Windows":
+                # Windows: open folder and select file
+                subprocess.run(['explorer', '/select,', str(file_path)])
+            elif system == "Darwin":  # macOS
+                subprocess.run(['open', '-R', str(file_path)])
+            else:  # Linux
+                folder_path = file_path.parent
+                subprocess.run(['xdg-open', str(folder_path)])
+
+            print(f"Opened folder for: {image_file.filename}")
+        except Exception as e:
+            print(f"Failed to open folder: {e}")
+
+    def _edit_image(self, image_file: ImageFile):
+        """Edit image - placeholder for future implementation."""
+        print(f"Edit action triggered for: {image_file.filename}")
+        # TODO: Implement edit functionality
+        # This could open an external editor or internal editing dialog

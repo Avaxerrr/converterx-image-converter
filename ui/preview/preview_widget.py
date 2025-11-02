@@ -16,6 +16,7 @@ from .image_graphics_view import ImageGraphicsView
 from .preview_toolbar import PreviewToolbar
 from .preview_types import PreviewMode
 from utils.logger import logger
+from ui.widgets.loading_spinner import LoadingSpinner
 
 
 class PreviewWidget(QWidget):
@@ -118,7 +119,7 @@ class PreviewWidget(QWidget):
         self._position_floating_toolbar()
 
         # Update loading overlay geometry
-        self._update_loading_overlay_geometry()
+        self.update_loading_overlay_geometry()
 
     def _image_needs_hd_mode(self, image_file: ImageFile) -> bool:
         """Check if image is large enough to benefit from HD mode."""
@@ -529,60 +530,80 @@ class PreviewWidget(QWidget):
         )
 
     def show_loading_overlay(self, message: str = "Generating output preview..."):
-        """
-        Show loading overlay on preview widget.
-
-        Args:
-            message: Loading message to display
-        """
-        # Create overlay if it doesn't exist
+        """Show loading overlay with animated spinner."""
         if not hasattr(self, 'loading_overlay'):
-            self._create_loading_overlay()
+            self.create_loading_overlay()
 
-        # Update message and show
         self.loading_label.setText(message)
+
+        # Update geometry BEFORE showing
+        self.update_loading_overlay_geometry()
+
         self.loading_overlay.show()
-        self.loading_overlay.raise_()  # Bring to front
+        self.loading_overlay.raise_()
+
+        # Start spinner animation
+        self.loading_spinner.start()
 
         logger.debug(f"Loading overlay shown: {message}", source="PreviewWidget")
 
     def hide_loading_overlay(self):
-        """Hide loading overlay."""
+        """Hide loading overlay and stop spinner."""
         if hasattr(self, 'loading_overlay'):
             self.loading_overlay.hide()
+
+            # Stop spinner animation
+            if hasattr(self, 'loading_spinner'):
+                self.loading_spinner.stop()
+
             logger.debug("Loading overlay hidden", source="PreviewWidget")
 
-    def _create_loading_overlay(self):
-        """Create the loading overlay widget (called once)."""
-        from PySide6.QtWidgets import QLabel
+    def create_loading_overlay(self):
+        """Create the loading overlay widget with animated spinner (called once)."""
+        from PySide6.QtWidgets import QLabel, QVBoxLayout
         from PySide6.QtCore import Qt
 
         # Semi-transparent overlay
         self.loading_overlay = QWidget(self)
-        self.loading_overlay.setObjectName("loadingOverlay")  # QSS styling
+        self.loading_overlay.setObjectName("loadingOverlay")
 
-        # Loading label
-        self.loading_label = QLabel("Generating output preview...", self.loading_overlay)
-        self.loading_label.setObjectName("loadingOverlayLabel")  # QSS styling
+        # Container for spinner + text
+        container = QWidget(self.loading_overlay)
+        container_layout = QVBoxLayout(container)
+        container_layout.setSpacing(16)
+        container_layout.setAlignment(Qt.AlignCenter)
+
+        # Create spinner widget
+        self.loading_spinner = LoadingSpinner(container)
+        self.loading_spinner.setFixedSize(60, 60)
+        container_layout.addWidget(self.loading_spinner, alignment=Qt.AlignCenter)
+
+        # Loading message label
+        self.loading_label = QLabel("Generating output preview...", container)
+        self.loading_label.setObjectName("loadingOverlayLabel")
         self.loading_label.setAlignment(Qt.AlignCenter)
+        container_layout.addWidget(self.loading_label)
 
-        # Position overlay (will be updated in resizeEvent)
-        self._update_loading_overlay_geometry()
+        # Center the container
+        container.setStyleSheet("background: transparent;")
 
         # Start hidden
         self.loading_overlay.hide()
 
-        logger.debug("Loading overlay created", source="PreviewWidget")
+        logger.debug("Loading overlay with spinner created", source="PreviewWidget")
 
-    def _update_loading_overlay_geometry(self):
+    def update_loading_overlay_geometry(self):
         """Update loading overlay size to match widget."""
-        if hasattr(self, 'loading_overlay'):
-            # Make overlay cover entire preview area
+        if hasattr(self, 'loading_overlay') and self.loading_overlay is not None:
+            # Make overlay cover entire widget
             self.loading_overlay.setGeometry(self.rect())
 
-            # Center the label
-            label_width = 400
-            label_height = 100
-            x = (self.width() - label_width) // 2
-            y = (self.height() - label_height) // 2
-            self.loading_label.setGeometry(x, y, label_width, label_height)
+            # Center the spinner container
+            if hasattr(self, 'loading_label') and self.loading_label is not None:
+                container = self.loading_label.parent()
+                if container is not None:
+                    container_width = 300
+                    container_height = 150
+                    x = (self.width() - container_width) // 2
+                    y = (self.height() - container_height) // 2
+                    container.setGeometry(x, y, container_width, container_height)

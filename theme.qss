@@ -1024,3 +1024,50 @@ QLabel#loadingOverlayLabel {
     font-weight: bold;
     background-color: transparent;
 }
+
+/* ==========================================
+   CONTEXT MENU STYLES
+   ========================================== */
+
+/* Context Menu Container */
+QMenu {
+    background-color: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 4px;
+    color: #cccccc;
+    font-size: 9pt;
+}
+
+/* Menu Items */
+QMenu::item {
+    background-color: transparent;
+    padding: 6px 24px 6px 12px;
+    border-radius: 3px;
+    margin: 1px 2px;
+    min-width: 140px;
+}
+
+/* Menu Item Hover */
+QMenu::item:selected {
+    background-color: #094771;
+    color: #ffffff;
+}
+
+/* Menu Item Disabled */
+QMenu::item:disabled {
+    color: #555555;
+    background-color: transparent;
+}
+
+/* Menu Separator */
+QMenu::separator {
+    height: 1px;
+    background-color: #3e3e42;
+    margin: 4px 8px;
+}
+
+/* Menu Icons (if you add them later) */
+QMenu::icon {
+    padding-left: 8px;
+}
