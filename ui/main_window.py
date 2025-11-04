@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
+    QMainWindow, QWidget, QHBoxLayout, QSplitter,
     QFileDialog, QStatusBar, QMessageBox, QProgressDialog
 )
 from PySide6.QtCore import Qt, QTimer, QThreadPool, QSettings
@@ -12,9 +12,9 @@ import platform
 
 from models import ImageFile
 from ui.batch_window import BatchWindow
-# Logger
+
 from ui.log_window import LogWindow
-from utils.logger import logger, LogLevel
+from utils.logger import logger
 
 from ui.file_list_widget import FileListWidget
 from ui.preview import PreviewWidget
@@ -24,8 +24,6 @@ from workers.batch_processor import BatchProcessor
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
 
-from collections import OrderedDict
-from PIL import Image, ImageOps
 from workers.output_preview_worker import OutputPreviewWorker
 
 
@@ -659,6 +657,9 @@ class MainWindow(QMainWindow):
         settings_snapshot = self.current_settings
         output_folder = self.settings_panel.get_output_folder()
 
+        # Disable convert button during batch
+        self.settings_panel.set_convert_enabled(False)
+
         # Lazy-create batch window if needed (MUST BE FIRST)
         if self.batch_window is None:
             self.batch_window = BatchWindow(self)
@@ -698,6 +699,8 @@ class MainWindow(QMainWindow):
 
         # Window → Processor
         self.batch_window.cancel_requested.connect(self.batch_processor.cancel_all)
+        self.batch_window.pause_requested.connect(self.batch_processor.pause_batch)
+        self.batch_window.resume_requested.connect(self.batch_processor.resume_batch)
 
         logger.debug("Batch signals connected", "MainWindow")
 
@@ -710,6 +713,10 @@ class MainWindow(QMainWindow):
             successful: Successfully converted files
             failed: Failed files
         """
+
+        # Re-enable convert button
+        self.settings_panel.set_convert_enabled(True)
+
         # Log summary
         logger.info(
             f"Batch conversion complete: {successful}/{total} successful, {failed} failed",

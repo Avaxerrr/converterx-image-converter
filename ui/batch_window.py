@@ -11,13 +11,14 @@ from PySide6.QtWidgets import (
     QHeaderView, QAbstractItemView, QFrame
 )
 from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor
 from pathlib import Path
-from typing import Dict, List
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+from datetime import datetime
 
 from models.image_file import ImageFile
-from core.format_settings import ConversionSettings, ImageFormat
+from core.format_settings import ConversionSettings
+from utils.logger import logger
 
 
 class BatchWindow(QDialog):
@@ -30,6 +31,8 @@ class BatchWindow(QDialog):
 
     # Signal emitted when user requests cancellation
     cancel_requested = Signal()
+    pause_requested = Signal()
+    resume_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -44,6 +47,13 @@ class BatchWindow(QDialog):
         self.completed_count = 0
         self.failed_count = 0
         self.total_saved_bytes = 0
+
+        # Restore window state
+        self._restore_window_state()
+
+        # TIME ESTIMATION
+        self.file_completion_times: List[float] = []  # Track completion time per file
+        self.last_completion_time: Optional[datetime] = None
 
         # Timer for elapsed time
         self.elapsed_timer = QTimer(self)
@@ -103,6 +113,12 @@ class BatchWindow(QDialog):
         # Action Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
+
+        self.pause_btn = QPushButton("Pause")  # ← ADD THIS
+        self.pause_btn.setFixedWidth(120)
+        self.pause_btn.clicked.connect(self._on_pause_clicked)
+        self.pause_btn.setEnabled(False)
+        button_layout.addWidget(self.pause_btn)
 
         self.cancel_btn = QPushButton("Cancel All")
         self.cancel_btn.setFixedWidth(120)
@@ -168,6 +184,10 @@ class BatchWindow(QDialog):
             settings: ConversionSettings snapshot
             output_folder: Output directory path
         """
+
+        # Store for later use
+        self.output_folder_path = output_folder
+
         # Format settings text
         format_str = settings.output_format.value
 
@@ -249,6 +269,8 @@ class BatchWindow(QDialog):
         # Enable cancel button
         self.cancel_btn.setEnabled(True)
         self.cancel_btn.setText("Cancel All")
+        self.pause_btn.setEnabled(True)
+        self.pause_btn.setText("Pause")
 
         # Update status
         self._update_status_summary()
@@ -282,6 +304,13 @@ class BatchWindow(QDialog):
         if image_file not in self.file_rows:
             return
 
+        # Track completion time for ETA calculation
+        current_time = datetime.now()
+        if self.last_completion_time is not None:
+            time_diff = (current_time - self.last_completion_time).total_seconds()
+            self.file_completion_times.append(time_diff)
+        self.last_completion_time = current_time
+
         row = self.file_rows[image_file]
 
         # Update status icon
@@ -293,15 +322,45 @@ class BatchWindow(QDialog):
         if progress_bar:
             progress_bar.setValue(100)
 
-        # Update size (saved/increased)
-        size_mb = bytes_saved / (1024 * 1024)
-        if bytes_saved < 0:
-            size_text = f"+{abs(size_mb):.2f} MB"
-        else:
-            size_text = f"-{size_mb:.2f} MB"
+        # Calculate sizes and percentage
+        input_size = image_file.size_bytes
+        output_size = input_size - bytes_saved
 
+        # Format input size (original)
+        if input_size < 1024 * 1000:  # Less than 1000 KB
+            input_str = f"{input_size / 1024:.0f} KB"
+        else:
+            input_str = f"{input_size / (1024 * 1024):.1f} MB"
+
+        # Format output size (converted)
+        if output_size < 1024 * 1000:  # Less than 1000 KB
+            output_str = f"{output_size / 1024:.0f} KB"
+        else:
+            output_str = f"{output_size / (1024 * 1024):.1f} MB"
+
+        # Calculate percentage change
+        if input_size > 0:
+            percent_change = ((input_size - output_size) / input_size) * 100
+        else:
+            percent_change = 0
+
+        # Format size text with arrow and color
+        if bytes_saved > 0:  # File got smaller
+            arrow = "↓"
+            color = "#28a745"  # Green
+            size_text = f"{output_str} ({input_str}) {arrow}{abs(percent_change):.0f}%"
+        elif bytes_saved < 0:  # File got bigger
+            arrow = "↑"
+            color = "#dc3545"  # Red
+            size_text = f"{output_str} ({input_str}) {arrow}{abs(percent_change):.0f}%"
+        else:  # Same size
+            color = "#6c757d"  # Gray
+            size_text = f"{output_str} (same)"
+
+        # Update size column
         size_item = self.file_table.item(row, 3)
         size_item.setText(size_text)
+        size_item.setForeground(QColor(color))
 
         # Update tracking
         self.completed_count += 1
@@ -338,29 +397,28 @@ class BatchWindow(QDialog):
         self._update_status_summary()
 
     def on_batch_finished(self, total: int, successful: int, failed: int):
-        """
-        Handle batch completion.
-
-        Args:
-            total: Total files processed
-            successful: Successfully converted files
-            failed: Failed files
-        """
+        """Handle batch completion."""
         # Stop timer
         self.elapsed_timer.stop()
 
-        # Disable cancel button, change to "Close"
+        # Disable cancel button
         self.cancel_btn.setEnabled(False)
+        self.pause_btn.setEnabled(False)
 
         # Update status
         if failed == 0:
             status_text = f"✅ Batch Complete: All {successful} files converted successfully!"
+            self.status_label.setStyleSheet(
+                "padding: 8px; background-color: #d4edda; border-radius: 4px; font-weight: bold;")
         else:
             status_text = f"⚠️ Batch Complete: {successful} successful, {failed} failed"
+            self.status_label.setStyleSheet(
+                "padding: 8px; background-color: #fff3cd; border-radius: 4px; font-weight: bold;")
 
         self.status_label.setText(status_text)
-        self.status_label.setStyleSheet(
-            "padding: 8px; background-color: #d4edda; border-radius: 4px; font-weight: bold;")
+
+        # Show completion dialog
+        self._show_completion_dialog(total, successful, failed)
 
     def _update_overall_progress(self):
         """Update overall progress bar and label."""
@@ -369,6 +427,33 @@ class BatchWindow(QDialog):
 
         self.overall_progress.setValue(percentage)
         self.overall_label.setText(f"Overall Progress: {processed}/{self.total_files} files ({percentage}%)")
+
+        # Change progress bar color based on status
+        if percentage == 100:
+            if self.failed_count == 0:
+                # All successful - green
+                self.overall_progress.setStyleSheet("""
+                    QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+                    QProgressBar::chunk { background-color: #28a745; }
+                """)
+            elif self.failed_count == self.total_files:
+                # All failed - red
+                self.overall_progress.setStyleSheet("""
+                    QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+                    QProgressBar::chunk { background-color: #dc3545; }
+                """)
+            else:
+                # Mixed - orange
+                self.overall_progress.setStyleSheet("""
+                    QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+                    QProgressBar::chunk { background-color: #ffc107; }
+                """)
+        else:
+            # In progress - blue
+            self.overall_progress.setStyleSheet("""
+                QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+                QProgressBar::chunk { background-color: #007bff; }
+            """)
 
     def _update_status_summary(self):
         """Update status bar with current counts."""
@@ -394,7 +479,7 @@ class BatchWindow(QDialog):
         self.status_label.setText(status_text)
 
     def _update_elapsed_time(self):
-        """Update elapsed time display (called every second)."""
+        """Update elapsed time and ETA display (called every second)."""
         if self.start_time is None:
             return
 
@@ -402,7 +487,32 @@ class BatchWindow(QDialog):
         hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        self.time_label.setText(f"Elapsed: {hours:02d}:{minutes:02d}:{seconds:02d}")
+        # Calculate ETA
+        eta_str = self._calculate_eta()
+
+        self.time_label.setText(f"Elapsed: {hours:02d}:{minutes:02d}:{seconds:02d} • Remaining: {eta_str}")
+
+    def _calculate_eta(self) -> str:
+        """Calculate estimated time remaining."""
+        if not self.file_completion_times or self.completed_count == 0:
+            return "Calculating..."
+
+        # Average time per file (in seconds)
+        avg_time = sum(self.file_completion_times) / len(self.file_completion_times)
+
+        # Files remaining
+        remaining_files = self.total_files - (self.completed_count + self.failed_count)
+
+        if remaining_files <= 0:
+            return "00:00:00"
+
+        # Estimated seconds remaining
+        eta_seconds = int(avg_time * remaining_files)
+
+        hours, remainder = divmod(eta_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        return f"~{hours:02d}:{minutes:02d}:{seconds:02d}"
 
     def _on_cancel_clicked(self):
         """Handle cancel button click."""
@@ -417,7 +527,13 @@ class BatchWindow(QDialog):
         self.status_label.setText("⏸️ Cancelling batch... (current files will finish)")
 
     def closeEvent(self, event):
-        """Override close event to hide instead of destroy."""
+        """Override close event to save state and hide instead of destroy."""
+        # Save window state
+        from PySide6.QtCore import QSettings
+        settings = QSettings("ConverterX", "ImageConverter")
+        settings.setValue("batch_window/geometry", self.saveGeometry())
+
+        # Hide instead of close
         event.ignore()
         self.hide()
 
@@ -429,3 +545,130 @@ class BatchWindow(QDialog):
             self.show()
             self.raise_()
             self.activateWindow()
+
+    def _show_completion_dialog(self, total: int, successful: int, failed: int):
+        """
+        Show batch completion summary dialog.
+
+        Args:
+            total: Total files processed
+            successful: Successfully converted
+            failed: Failed files
+        """
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Batch Conversion Complete")
+        dialog.setModal(True)
+        dialog.setMinimumWidth(400)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+
+        # Title
+        if failed == 0:
+            title_text = "✅ Batch Conversion Complete!"
+            title_color = "#28a745"
+        else:
+            title_text = "⚠️ Batch Conversion Complete"
+            title_color = "#ffc107"
+
+        title = QLabel(title_text)
+        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {title_color};")
+        layout.addWidget(title)
+
+        # Stats
+        stats_layout = QVBoxLayout()
+        stats_layout.setSpacing(8)
+
+        stats_layout.addWidget(QLabel(f"✅ Successful: {successful} files"))
+        if failed > 0:
+            stats_layout.addWidget(QLabel(f"❌ Failed: {failed} files"))
+
+        saved_mb = self.total_saved_bytes / (1024 * 1024)
+        stats_layout.addWidget(QLabel(f"💾 Total Saved: {saved_mb:.2f} MB"))
+
+        if self.start_time:
+            elapsed = datetime.now() - self.start_time
+            hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            stats_layout.addWidget(QLabel(f"⏱️ Time Elapsed: {hours:02d}:{minutes:02d}:{seconds:02d}"))
+
+        layout.addLayout(stats_layout)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        if failed > 0:
+            view_failed_btn = QPushButton("View Failed Files")
+            view_failed_btn.clicked.connect(lambda: self._filter_failed_files())
+            view_failed_btn.clicked.connect(dialog.accept)
+            button_layout.addWidget(view_failed_btn)
+
+        open_folder_btn = QPushButton("Open Output Folder")
+        open_folder_btn.clicked.connect(lambda: self._open_output_folder())
+        button_layout.addWidget(open_folder_btn)
+
+        ok_btn = QPushButton("OK")
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(dialog.accept)
+        button_layout.addWidget(ok_btn)
+
+        layout.addLayout(button_layout)
+
+        dialog.exec()
+
+    def _filter_failed_files(self):
+        """Scroll to and highlight failed files in table."""
+        for row in range(self.file_table.rowCount()):
+            status_item = self.file_table.item(row, 0)
+            if status_item.text() == "❌":
+                self.file_table.selectRow(row)
+                self.file_table.scrollToItem(status_item)
+                break
+
+    def _open_output_folder(self):
+        """Open output folder in file explorer."""
+        if not hasattr(self, 'output_folder_path'):
+            return
+
+        try:
+            import subprocess
+            import platform
+
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(['explorer', str(self.output_folder_path)])
+            elif system == "Darwin":  # macOS
+                subprocess.run(['open', str(self.output_folder_path)])
+            else:  # Linux
+                subprocess.run(['xdg-open', str(self.output_folder_path)])
+        except Exception as e:
+            from utils.logger import logger
+            logger.error(f"Failed to open output folder: {e}", "BatchWindow")
+
+    def _restore_window_state(self):
+        """Restore window size and position from QSettings."""
+        from PySide6.QtCore import QSettings
+        settings = QSettings("ConverterX", "ImageConverter")
+
+        geometry = settings.value("batch_window/geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+
+    def _on_pause_clicked(self):
+        """Handle pause/resume button click."""
+        # Toggle between pause and resume
+        if self.pause_btn.text() == "Pause":
+            # Request pause
+            self.pause_requested.emit()
+            self.pause_btn.setText("Resume")
+            self.status_label.setText("⏸️ Batch paused (active files will finish)")
+            logger.debug("Pause requested by user", "BatchWindow")
+        else:
+            # Request resume
+            self.resume_requested.emit()
+            self.pause_btn.setText("Pause")
+            self._update_status_summary()  # Restore normal status
+            logger.debug("Resume requested by user", "BatchWindow")

@@ -40,6 +40,7 @@ class ConversionWorker(QRunnable):
                 f"Worker processing: {self.image_file.filename}",
                 source="Worker"
             )
+
             # Perform conversion
             success, message, output_size = ImageConverter.convert_image(
                 self.image_file.path,
@@ -54,10 +55,14 @@ class ConversionWorker(QRunnable):
                     output_size
                 )
 
+                # Calculate size_saved (bytes saved = input - output)
+                size_saved = self.image_file.size_bytes - output_size
+
                 result = {
                     'input_file': self.image_file,
                     'output_path': self.output_path,
                     'output_size': output_size,
+                    'size_saved': size_saved,
                     'savings_percent': savings_pct,
                     'savings_string': savings_str,
                     'message': message

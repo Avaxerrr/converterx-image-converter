@@ -8,13 +8,13 @@ Handles up to 4 simultaneous conversions using existing ConversionWorker.
 
 from PySide6.QtCore import QObject, Signal, QThreadPool
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from models.image_file import ImageFile
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
-from utils.logger import logger, LogLevel
+from utils.logger import logger
 
 
 @dataclass
@@ -60,7 +60,9 @@ class BatchProcessor(QObject):
         # Control flags
         self.cancel_requested = False
         self.is_batch_running = False
-        
+
+        self.is_paused = False
+
         # Thread pool
         self.threadpool = QThreadPool.globalInstance()
         
@@ -123,7 +125,7 @@ class BatchProcessor(QObject):
         self.cancel_requested = True
         pending_count = len(self.file_queue)
         logger.warning(f"Batch cancellation requested. {pending_count} files will be skipped.", "BatchProcessor")
-    
+
     def is_running(self) -> bool:
         """Check if batch is currently active."""
         return self.is_batch_running
@@ -146,6 +148,11 @@ class BatchProcessor(QObject):
         if self.cancel_requested:
             logger.debug("Batch cancelled. Skipping remaining files.", "BatchProcessor")
             self._check_batch_completion()
+            return
+
+        # Check if paused - DON'T start new files
+        if self.is_paused:
+            logger.debug("Batch paused. Not starting new files.", "BatchProcessor")
             return
         
         # Check if queue is empty
@@ -186,23 +193,23 @@ class BatchProcessor(QObject):
         
         # Start worker
         self.threadpool.start(worker)
-    
+
     def _on_worker_success(self, image_file: ImageFile, result: dict):
-        """
-        Handle successful file conversion.
-        
-        Args:
-            image_file: The converted file
-            result: Result dict from ConversionWorker (contains output_path, size_saved)
-        """
+        """Handle successful file conversion."""
         # Remove from active workers
         if image_file in self.active_workers:
             del self.active_workers[image_file]
-        
-        # Extract result data
+
+        # Extract result data (check both 'size_saved' and 'savings' keys)
         output_path = result.get('output_path')
-        size_saved = result.get('size_saved', 0)
-        
+        size_saved = result.get('size_saved', result.get('savings', 0))
+
+        # If still 0, calculate from file sizes
+        if size_saved == 0 and output_path and output_path.exists():
+            input_size = image_file.size_bytes
+            output_size = output_path.stat().st_size
+            size_saved = input_size - output_size
+
         # Record result
         batch_result = BatchFileResult(
             image_file=image_file,
@@ -211,14 +218,21 @@ class BatchProcessor(QObject):
             bytes_saved=size_saved
         )
         self.completed_files.append(batch_result)
-        
+
         # Emit signal
         self.file_completed.emit(image_file, output_path, size_saved)
-        logger.success(f"Completed: {image_file.filename} (saved {size_saved / 1024:.1f} KB)", "BatchProcessor")
-        
+
+        # Log with proper size
+        size_saved_kb = size_saved / 1024
+        if size_saved >= 0:
+            logger.success(f"Completed: {image_file.filename} (saved {size_saved_kb:.1f} KB)", "BatchProcessor")
+        else:
+            logger.success(f"Completed: {image_file.filename} (increased by {abs(size_saved_kb):.1f} KB)",
+                           "BatchProcessor")
+
         # Start next file
         self._start_next_file()
-    
+
     def _on_worker_error(self, image_file: ImageFile, error_message: str):
         """
         Handle failed file conversion.
@@ -271,3 +285,32 @@ class BatchProcessor(QObject):
             f"Batch conversion finished: {successful_count} successful, {failed_count} failed",
             "BatchProcessor"
         )
+
+    def pause_batch(self):
+        """
+        Pause batch conversion.
+
+        Currently active workers will finish, but no new files will start
+        until resume_batch() is called.
+        """
+        if not self.is_batch_running:
+            return
+
+        self.is_paused = True
+        logger.info("Batch paused. Active conversions will finish.", "BatchProcessor")
+
+    def resume_batch(self):
+        """
+        Resume paused batch conversion.
+
+        Starts processing queued files again.
+        """
+        if not self.is_batch_running:
+            return
+
+        self.is_paused = False
+        logger.info("Batch resumed. Processing will continue.", "BatchProcessor")
+
+        # Start processing again if there are slots available
+        while len(self.active_workers) < self.MAX_CONCURRENT and len(self.file_queue) > 0:
+            self._start_next_file()
