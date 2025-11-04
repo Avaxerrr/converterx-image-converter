@@ -10,6 +10,8 @@ import os
 import subprocess
 import platform
 
+from models import ImageFile
+from ui.batch_window import BatchWindow
 # Logger
 from ui.log_window import LogWindow
 from utils.logger import logger, LogLevel
@@ -18,6 +20,7 @@ from ui.file_list_widget import FileListWidget
 from ui.preview import PreviewWidget
 from ui.settings import SettingsPanel
 from utils.file_utils import load_image_files, SUPPORTED_FORMATS
+from workers.batch_processor import BatchProcessor
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
 
@@ -34,6 +37,10 @@ class MainWindow(QMainWindow):
         self.current_settings: ConversionSettings = None
         self.threadpool = QThreadPool()
         self.progress_dialog: QProgressDialog = None
+
+        # Batch processing components (lazy-initialized)
+        self.batch_processor = None
+        self.batch_window = None
 
         # Created on-demand log
         self.log_window = None
@@ -64,6 +71,8 @@ class MainWindow(QMainWindow):
 
         # logger hotkey
         self._setup_logger_hotkey()
+
+        self._setup_batch_window_shortcut()
 
         # Test log
         logger.info("ConverterX started successfully", source="App")
@@ -185,8 +194,20 @@ class MainWindow(QMainWindow):
 
     def _on_selection_changed(self):
         """Handle selection change."""
-        has_selection = len(self.file_list.list_widget.selectedItems()) > 0
+        selected_items = self.file_list.list_widget.selectedItems()
+        selected_count = len(selected_items)
+
+        # Enable/disable convert button
+        has_selection = selected_count > 0
         self.settings_panel.set_convert_enabled(has_selection)
+
+        # Update convert button text based on selection count
+        if selected_count == 0:
+            self.settings_panel.convert_btn.setText("Convert")
+        elif selected_count == 1:
+            self.settings_panel.convert_btn.setText("Convert")
+        else:
+            self.settings_panel.convert_btn.setText(f"Convert Selected ({selected_count})")
 
     def _on_settings_changed(self, settings: ConversionSettings):
         """
@@ -206,47 +227,67 @@ class MainWindow(QMainWindow):
             self.output_preview_debounce_timer.start(500)  # 500ms delay
 
     def _on_convert_selected(self):
-        """Convert currently selected file."""
-        selected_file = self.file_list.get_selected_file()
+        """Convert currently selected file(s)."""
+        # Get all selected files
+        selected_items = self.file_list.list_widget.selectedItems()
+        selected_files = []
 
-        # LOG: User initiated conversion - log settings for debugging
-        if selected_file and self.current_settings:
+        for item in selected_items:
+            row = self.file_list.list_widget.row(item)
+            if row < len(self.file_list.image_files):
+                selected_files.append(self.file_list.image_files[row])
+
+        if not selected_files:
+            return
+
+        # Check if we have settings
+        if not self.current_settings:
+            logger.warning("No settings configured", "MainWindow")
+            return
+
+        # BRANCH: Single file vs Multiple files
+        if len(selected_files) == 1:
+            # === SINGLE FILE CONVERSION (EXISTING FLOW) ===
+            selected_file = selected_files[0]
             logger.info(
                 f"Starting conversion: {selected_file.filename} → "
                 f"{self.current_settings.output_format.value} "
                 f"(Q{self.current_settings.quality}, "
-                f"Resize:{self.current_settings.resize_mode.value})",
-                source="MainWindow"
+                f"Resize={self.current_settings.resize_mode.value})",
+                "MainWindow"
             )
 
-        if not selected_file:
-            return
+            # Get output path
+            output_folder = self.settings_panel.get_output_folder()
+            output_filename = f"{selected_file.path.stem}{self.current_settings.file_extension}"
+            output_path = output_folder / output_filename
 
-        output_folder = self.settings_panel.get_output_folder()
-        output_filename = selected_file.path.stem + self.current_settings.file_extension
-        output_path = output_folder / output_filename
+            # Check if file exists
+            if output_path.exists():
+                reply = QMessageBox.question(
+                    self,
+                    "File Exists",
+                    f"{output_filename} already exists. Overwrite?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if reply == QMessageBox.No:
+                    return
 
-        if output_path.exists():
-            reply = QMessageBox.question(
-                self, "File Exists",
-                f"{output_filename} already exists. Overwrite?",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply == QMessageBox.No:
-                return
+            # Disable convert button
+            self.settings_panel.set_convert_enabled(False)
+            self.status_bar.showMessage(f"Converting {selected_file.filename}...")
+            self.status_bar.setStyleSheet("background-color: #0e639c; color: white;")
 
-        # Show progress in status bar
-        self.settings_panel.set_convert_enabled(False)
-        self.status_bar.showMessage(f"Converting {selected_file.filename}...")
-        self.status_bar.setStyleSheet("background-color: #0e639c; color: white;")
+            # Create and start worker
+            worker = ConversionWorker(selected_file, output_path, self.current_settings)
+            worker.signals.success.connect(self._on_conversion_success)
+            worker.signals.error.connect(self._on_conversion_error)
+            worker.signals.finished.connect(self._on_conversion_finished)
+            self.threadpool.start(worker)
 
-        # Create and start worker
-        worker = ConversionWorker(selected_file, output_path, self.current_settings)
-        worker.signals.success.connect(self._on_conversion_success)
-        worker.signals.error.connect(self._on_conversion_error)
-        worker.signals.finished.connect(self._on_conversion_finished)
-
-        self.threadpool.start(worker)
+        else:
+            # === BATCH CONVERSION (NEW FLOW) ===
+            self._start_batch_conversion(selected_files)
 
     def _on_conversion_success(self, result: dict):
         """Handle successful conversion."""
@@ -604,3 +645,102 @@ class MainWindow(QMainWindow):
         event.accept()
 
         logger.info("Application closing - window state saved", source="MainWindow")
+
+    def _start_batch_conversion(self, files: List[ImageFile]):
+        """
+        Start batch conversion of multiple files.
+
+        Args:
+            files: List of ImageFile objects to convert
+        """
+        logger.info(f"Starting batch conversion of {len(files)} files", "MainWindow")
+
+        # Snapshot current settings
+        settings_snapshot = self.current_settings
+        output_folder = self.settings_panel.get_output_folder()
+
+        # Lazy-create batch window if needed (MUST BE FIRST)
+        if self.batch_window is None:
+            self.batch_window = BatchWindow(self)
+            logger.debug("Batch window initialized", "MainWindow")
+
+        # Lazy-create batch processor if needed (MUST BE SECOND)
+        if self.batch_processor is None:
+            self.batch_processor = BatchProcessor(self)
+            self._connect_batch_signals()  # Safe now because batch_window exists
+            logger.debug("Batch processor initialized", "MainWindow")
+
+        # Set settings snapshot in batch window
+        self.batch_window.set_settings_snapshot(settings_snapshot, output_folder)
+
+        # Show batch window
+        self.batch_window.show()
+        self.batch_window.raise_()
+        self.batch_window.activateWindow()
+
+        # Start batch in window (populates file list)
+        self.batch_window.start_batch(files)
+
+        # Start batch processor
+        self.batch_processor.start_batch(files, settings_snapshot, output_folder)
+
+    def _connect_batch_signals(self):
+        """Connect BatchProcessor signals to BatchWindow and MainWindow."""
+        # Processor → Window
+        self.batch_processor.file_started.connect(self.batch_window.update_file_started)
+        self.batch_processor.file_progress.connect(self.batch_window.update_file_progress)
+        self.batch_processor.file_completed.connect(self.batch_window.update_file_completed)
+        self.batch_processor.file_failed.connect(self.batch_window.update_file_failed)
+        self.batch_processor.batch_finished.connect(self.batch_window.on_batch_finished)
+
+        # Processor → MainWindow
+        self.batch_processor.batch_finished.connect(self._on_batch_finished)
+
+        # Window → Processor
+        self.batch_window.cancel_requested.connect(self.batch_processor.cancel_all)
+
+        logger.debug("Batch signals connected", "MainWindow")
+
+    def _on_batch_finished(self, total: int, successful: int, failed: int):
+        """
+        Handle batch conversion completion.
+
+        Args:
+            total: Total files in batch
+            successful: Successfully converted files
+            failed: Failed files
+        """
+        # Log summary
+        logger.info(
+            f"Batch conversion complete: {successful}/{total} successful, {failed} failed",
+            "MainWindow"
+        )
+
+        # Update status bar
+        if failed == 0:
+            self.status_bar.showMessage(f"Batch complete: All {successful} files converted successfully!", 5000)
+        else:
+            self.status_bar.showMessage(f"Batch complete: {successful} successful, {failed} failed", 5000)
+
+
+    def _setup_batch_window_shortcut(self):
+        """Setup Ctrl+B shortcut to toggle batch window."""
+        self.batch_shortcut = QShortcut(QKeySequence("Ctrl+B"), self)
+        self.batch_shortcut.activated.connect(self._toggle_batch_window)
+
+    def _toggle_batch_window(self):
+        """Toggle batch window visibility (Ctrl+B handler)."""
+        # Lazy-create batch window if it doesn't exist yet
+        if self.batch_window is None:
+            self.batch_window = BatchWindow(self)
+            logger.debug("Batch window created via Ctrl+B shortcut", "MainWindow")
+
+        # Toggle visibility
+        if self.batch_window.isVisible():
+            self.batch_window.hide()
+            logger.debug("Batch window hidden", "MainWindow")
+        else:
+            self.batch_window.show()
+            self.batch_window.raise_()
+            self.batch_window.activateWindow()
+            logger.debug("Batch window shown", "MainWindow")

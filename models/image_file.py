@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 
-@dataclass
+@dataclass(frozen=True)
 class ImageFile:
     """Represents an image file in the conversion queue."""
 
@@ -37,13 +37,11 @@ class ImageFile:
 
     @property
     def size_str(self) -> str:
-        """Get formatted file size."""
-        if self.size_bytes < 1024:
-            return f"{self.size_bytes} B"
-        elif self.size_bytes < 1024 * 1024:
-            return f"{self.size_kb:.1f} KB"
-        else:
+        """Get size as formatted string."""
+        if self.size_mb >= 1:
             return f"{self.size_mb:.2f} MB"
+        else:
+            return f"{self.size_kb:.1f} KB"
 
     def __str__(self) -> str:
         return f"{self.filename} ({self.dimensions_str}, {self.size_str})"

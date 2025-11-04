@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
-    QPushButton, QLabel, QListWidgetItem, QSizePolicy, QMenu
+    QPushButton, QLabel, QListWidgetItem, QSizePolicy, QMenu, QAbstractItemView
 )
 from PySide6.QtCore import Signal, Qt, QSize, QThreadPool
 from PySide6.QtGui import QIcon, QPixmap, QAction
@@ -71,6 +71,9 @@ class FileListWidget(QWidget):
         self.list_widget.setSpacing(4)
         self.list_widget.setWordWrap(False)
         self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        self.list_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.list_widget.setSelectionBehavior(QAbstractItemView.SelectItems)
 
         # Connect signals
         self.list_widget.itemClicked.connect(self._on_item_clicked)
