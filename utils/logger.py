@@ -1,6 +1,6 @@
 """
 Application-wide logger with thread-safe operation and multiple log levels.
-Can be used from anywhere in the application.
+Now includes automatic file logging with rotation.
 """
 
 from enum import Enum
@@ -8,6 +8,8 @@ from datetime import datetime
 from typing import List, Callable, Optional
 from threading import Lock
 from dataclasses import dataclass
+from pathlib import Path
+import atexit
 
 
 class LogLevel(Enum):
@@ -30,13 +32,28 @@ class LogMessage:
     def __str__(self) -> str:
         time_str = self.timestamp.strftime("%H:%M:%S")
         source_str = f"[{self.source}] " if self.source else ""
-        return f"[{time_str}] [{self.level.value}] {source_str}{self.message}"
+
+        # Defensive check for level type
+        if isinstance(self.level, str):
+            try:
+                level_value = LogLevel[self.level.upper()].value
+            except (KeyError, AttributeError):
+                level_value = self.level
+        elif isinstance(self.level, LogLevel):
+            level_value = self.level.value
+        else:
+            level_value = str(self.level)
+
+        return f"[{time_str}] [{level_value}] {source_str}{self.message}"
 
 
 class AppLogger:
     """
-    Singleton application logger.
-    Thread-safe, can be used from any part of the application.
+    Singleton application logger with file output.
+
+    Logs are written to:
+    - Memory (for UI display)
+    - File (logs/converter_YYYYMMDD_HHMMSS.log)
     """
 
     _instance = None
@@ -54,97 +71,150 @@ class AppLogger:
         if self._initialized:
             return
 
+        self.messages: List[LogMessage] = []
+        self.callbacks: List[Callable] = []
+        self.max_messages = 1000  # Keep last 1000 in memory
+
+        # File logging setup
+        self.log_folder = Path("logs")
+        self.log_folder.mkdir(exist_ok=True)
+
+        # Create log file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.log_file = self.log_folder / f"converter_{timestamp}.log"
+        self.file_handle = None
+
+        # Open log file
+        try:
+            self.file_handle = open(self.log_file, 'w', encoding='utf-8', buffering=1)  # Line buffering
+            self._write_header()
+        except Exception as e:
+            print(f"WARNING: Could not create log file: {e}")
+
+        # Register cleanup on exit
+        atexit.register(self._cleanup)
+
         self._initialized = True
-        self._messages: List[LogMessage] = []
-        self._callbacks: List[Callable[[LogMessage], None]] = []
-        self._max_messages = 1000  # Keep last 1000 messages
-        self._enabled = True
 
-    def add_callback(self, callback: Callable[[LogMessage], None]):
-        """
-        Add a callback to be notified of new log messages.
-        Useful for updating UI in real-time.
-        """
-        with self._lock:
-            if callback not in self._callbacks:
-                self._callbacks.append(callback)
+    def _write_header(self):
+        """Write log file header."""
+        if self.file_handle:
+            self.file_handle.write("=" * 80 + "\n")
+            self.file_handle.write(f"ConverterX Application Log\n")
+            self.file_handle.write(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            self.file_handle.write("=" * 80 + "\n\n")
+            self.file_handle.flush()
 
-    def remove_callback(self, callback: Callable[[LogMessage], None]):
-        """Remove a callback."""
-        with self._lock:
-            if callback in self._callbacks:
-                self._callbacks.remove(callback)
+    def _cleanup(self):
+        """Close log file on shutdown."""
+        if self.file_handle:
+            try:
+                self.file_handle.write("\n" + "=" * 80 + "\n")
+                self.file_handle.write(f"Log ended: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                self.file_handle.write("=" * 80 + "\n")
+                self.file_handle.close()
+            except:
+                pass
 
     def log(self, level: LogLevel, message: str, source: str = ""):
-        """Log a message at the specified level."""
-        if not self._enabled:
-            return
+        """
+        Log a message with specified level.
 
-        log_msg = LogMessage(
-            timestamp=datetime.now(),
-            level=level,
-            message=message,
-            source=source
-        )
-
+        Args:
+            level: Log level (LogLevel enum)
+            message: Log message
+            source: Source component (optional)
+        """
         with self._lock:
-            self._messages.append(log_msg)
+            msg = LogMessage(
+                timestamp=datetime.now(),
+                level=level,
+                message=message,
+                source=source
+            )
 
-            # Trim old messages if we exceed max
-            if len(self._messages) > self._max_messages:
-                self._messages = self._messages[-self._max_messages:]
+            # Add to memory
+            self.messages.append(msg)
 
-            # Notify all callbacks
-            for callback in self._callbacks:
+            # Trim memory if needed
+            if len(self.messages) > self.max_messages:
+                self.messages = self.messages[-self.max_messages:]
+
+            # Write to file
+            if self.file_handle:
                 try:
-                    callback(log_msg)
+                    self.file_handle.write(str(msg) + "\n")
+                    self.file_handle.flush()  # Immediate write
+                except Exception as e:
+                    print(f"WARNING: Failed to write to log file: {e}")
+
+            # Notify callbacks
+            for callback in self.callbacks:
+                try:
+                    callback(msg)
                 except Exception as e:
                     print(f"Error in log callback: {e}")
 
     def debug(self, message: str, source: str = ""):
-        """Log a debug message."""
+        """Log a DEBUG message."""
         self.log(LogLevel.DEBUG, message, source)
 
     def info(self, message: str, source: str = ""):
-        """Log an info message."""
+        """Log an INFO message."""
         self.log(LogLevel.INFO, message, source)
 
     def success(self, message: str, source: str = ""):
-        """Log a success message."""
+        """Log a SUCCESS message."""
         self.log(LogLevel.SUCCESS, message, source)
 
     def warning(self, message: str, source: str = ""):
-        """Log a warning message."""
+        """Log a WARNING message."""
         self.log(LogLevel.WARNING, message, source)
 
     def error(self, message: str, source: str = ""):
-        """Log an error message."""
+        """Log an ERROR message."""
         self.log(LogLevel.ERROR, message, source)
+
+    def add_callback(self, callback: Callable[[LogMessage], None]):
+        """
+        Register a callback to be notified of new log messages.
+
+        Args:
+            callback: Function that accepts a LogMessage
+        """
+        with self._lock:
+            if callback not in self.callbacks:
+                self.callbacks.append(callback)
+
+    def remove_callback(self, callback: Callable):
+        """Remove a registered callback."""
+        with self._lock:
+            if callback in self.callbacks:
+                self.callbacks.remove(callback)
 
     def get_messages(self, level: Optional[LogLevel] = None) -> List[LogMessage]:
         """
-        Get all log messages, optionally filtered by level.
+        Get all messages, optionally filtered by level.
 
         Args:
-            level: If specified, only return messages of this level
+            level: Filter by this level (None = all messages)
+
+        Returns:
+            List of LogMessage objects
         """
         with self._lock:
             if level is None:
-                return self._messages.copy()
-            return [msg for msg in self._messages if msg.level == level]
+                return self.messages.copy()
+            return [msg for msg in self.messages if msg.level == level]
 
     def clear(self):
-        """Clear all log messages."""
+        """Clear all messages from memory (does not affect log file)."""
         with self._lock:
-            self._messages.clear()
+            self.messages.clear()
 
-    def set_enabled(self, enabled: bool):
-        """Enable or disable logging."""
-        self._enabled = enabled
-
-    def is_enabled(self) -> bool:
-        """Check if logging is enabled."""
-        return self._enabled
+    def get_log_file_path(self) -> Optional[Path]:
+        """Get the current log file path."""
+        return self.log_file if self.log_file.exists() else None
 
 
 # Global logger instance
