@@ -14,16 +14,33 @@ Image Converter/
 |    +--- add_photo.svg
 |    +--- arrow-down-white.png
 |    +--- arrow-up-white.png
+|    +--- cancel_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- center_focus.svg
+|    +--- check_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
+|    +--- close_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
+|    +--- cycle.svg
 |    +--- delete.svg
+|    +--- done_all_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
+|    +--- done_outline.svg
+|    +--- download_done_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- hd-preview.svg
 |    +--- hd-previewads.svg
 |    +--- info.svg
+|    +--- pause_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
+|    +--- pending_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- preview.svg
 |    +--- previewasdasd.svg
+|    +--- progress.svg
+|    +--- progress_activity_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- rotate_left.svg
-|    \--- rotate_right.svg
+|    +--- rotate_right.svg
+|    +--- schedule.svg
+|    +--- settings.svg
+|    +--- settings_applications_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
+|    +--- warning.svg
+|    \--- x_circle_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    
++--- logs
 +--- models
 |    +--- __init__.py
 |    \--- image_file.py
@@ -43,6 +60,10 @@ Image Converter/
 |    |    +--- output_settings.py
 |    |    +--- resize_settings.py
 |    |    \--- settings_panel.py
+|    |    
+|    +--- widgets
+|    |    +--- __init__.py
+|    |    \--- loading_spinner.py
 |    |    
 |    +--- __init__.py
 |    +--- file_list_widget.py

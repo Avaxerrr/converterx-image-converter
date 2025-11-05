@@ -74,7 +74,7 @@ QPushButton {
     color: #ffffff;
     font-weight: 600;
     font-size: 9pt;
-    min-height: 26px;
+    min-height: 20px;
 }
 
 QPushButton:hover {
@@ -1070,4 +1070,352 @@ QMenu::separator {
 /* Menu Icons (if you add them later) */
 QMenu::icon {
     padding-left: 8px;
+}
+/* ============================================================================
+   BATCH WINDOW STYLES - MODERN DARK THEME
+   Matches ConverterX master theme with modern, polished appearance
+   ============================================================================ */
+
+/* ============================================
+   BATCH WINDOW DIALOG
+   ============================================ */
+QDialog#BatchWindow {
+    background-color: #1e1e1e;
+    color: #cccccc;
+}
+
+/* ============================================
+   SETTINGS FRAME HEADER
+   ============================================ */
+#batchSettingsFrame {
+  /* Surface light color */
+    border: 0px solid #3e3e42;
+    border-radius: 0px;
+    padding: 0px;
+}
+
+/* Settings Text Labels */
+#batchSettingsText {
+    font-weight: 600;
+    font-size: 10pt;
+    color: #4fc3f7;  /* Accent bright color for emphasis */
+}
+
+#batchOutputText {
+    font-size: 10pt;
+    color: #cccccc;
+    font-weight: 400;
+}
+
+/* ============================================
+   OVERALL PROGRESS SECTION
+   ============================================ */
+#batchOverallLabel {
+    font-weight: 600;
+    font-size: 9pt;
+    color: #cccccc;
+}
+
+/* Overall Progress Bar - Modernized with states */
+#batchOverallProgress {
+    border: 0px solid #3e3e42;
+    border-radius: 4px;
+    background-color: #252526;  /* Surface color */
+    text-align: center;
+    height: 24px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 9pt;
+}
+
+/* Progress bar chunk colors based on state */
+#batchOverallProgress[state="processing"]::chunk {
+    background-color: #007acc;  /* Primary blue - processing */
+    border-radius: 3px;
+}
+
+#batchOverallProgress[state="success"]::chunk {
+    background-color: #28a745;  /* Green - all successful */
+    border-radius: 3px;
+}
+
+#batchOverallProgress[state="error"]::chunk {
+    background-color: #dc3545;  /* Red - all failed */
+    border-radius: 3px;
+}
+
+#batchOverallProgress[state="warning"]::chunk {
+    background-color: #ffc107;  /* Yellow/Orange - mixed results */
+    border-radius: 3px;
+}
+
+/* ============================================
+   FILE TABLE WIDGET
+   ============================================ */
+BatchWindow QTableWidget {
+    background-color: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    gridline-color: #3e3e42;
+    selection-background-color: #094771;
+    selection-color: #ffffff;
+    color: #cccccc;
+    font-size: 9pt;
+}
+
+/* Table header */
+BatchWindow QTableWidget QHeaderView::section {
+    background-color: #2a2d2e;
+    color: #cccccc;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #3e3e42;
+    border-right: 1px solid #3e3e42;
+    font-weight: 600;
+    font-size: 9pt;
+}
+
+BatchWindow QTableWidget QHeaderView::section:first {
+    border-top-left-radius: 4px;
+}
+
+BatchWindow QTableWidget QHeaderView::section:last {
+    border-top-right-radius: 4px;
+    border-right: none;
+}
+
+/* Table rows */
+BatchWindow QTableWidget::item {
+    padding: 4px;
+    border-bottom: 0px solid #3e3e42;
+}
+
+/* Alternating row colors */
+BatchWindow QTableWidget::item {
+    background-color: #1e1e1e;
+}
+
+/* Table row hover */
+BatchWindow QTableWidget::item:hover {
+    background-color: #2a2d2e;
+}
+
+/* Progress bars inside table cells */
+BatchWindow QTableWidget QProgressBar {
+    border: 0px solid #3e3e42;
+    border-radius: 3px;
+    background-color: #1e1e1e;
+    text-align: center;
+    height: 20px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 8pt;
+}
+
+BatchWindow QTableWidget QProgressBar::chunk {
+    background-color: #007acc;
+    border-radius: 3px;
+}
+
+/* ============================================
+   STATUS LABEL
+   ============================================ */
+#batchStatusLabel {
+    padding: 8px 12px;
+    border-radius: 4px;
+    background-color: #2a2d2e;
+    border: 0px solid #3e3e42;
+    color: #cccccc;
+    font-size: 9pt;
+}
+
+#batchStatusLabel[state="success"] {
+    background-color: rgba(40, 167, 69, 0.15);  /* Green tint */
+    border-color: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+    font-weight: 600;
+}
+
+#batchStatusLabel[state="warning"] {
+    background-color: rgba(255, 193, 7, 0.15);  /* Yellow/Orange tint */
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+    font-weight: 600;
+}
+
+/* ============================================
+   TIME LABEL
+   ============================================ */
+#batchTimeLabel {
+    padding: 6px 12px;
+    color: #858585;  /* Muted text */
+    font-size: 9pt;
+    background-color: transparent;
+}
+
+/* ============================================
+   SEPARATOR LINES
+   ============================================ */
+BatchWindow QFrame[frameShape="4"] {  /* HLine */
+    background-color: #3e3e42;
+    max-height: 1px;
+    border: none;
+}
+
+/* ============================================
+   BATCH WINDOW BUTTONS
+   ============================================ */
+BatchWindow QPushButton {
+    background-color: #0e639c;
+    border: 1px solid #007acc;
+    border-radius: 3px;
+    padding: 8px 16px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 9pt;
+    min-height: 20px;
+}
+
+BatchWindow QPushButton:hover {
+    background-color: #1177bb;
+    border-color: #0098ff;
+}
+
+BatchWindow QPushButton:pressed {
+    background-color: #0d5a8f;
+}
+
+BatchWindow QPushButton:disabled {
+    background-color: #3e3e42;
+    border-color: #555555;
+    color: #808080;
+}
+
+/* Close button - subtle variant */
+BatchWindow QPushButton#closeButton {
+    background-color: #3e3e42;
+    border-color: #505050;
+}
+
+BatchWindow QPushButton#closeButton:hover {
+    background-color: #4a4a4f;
+}
+
+/* Cancel button - warning variant */
+BatchWindow QPushButton#cancelButton {
+    background-color: #6e3030;
+    border-color: #8e4040;
+}
+
+BatchWindow QPushButton#cancelButton:hover {
+    background-color: #8e4040;
+    border-color: #ae5050;
+}
+
+BatchWindow QPushButton#cancelButton:pressed {
+    background-color: #5e2020;
+}
+
+/* ============================================
+   COMPLETION DIALOG
+   ============================================ */
+QDialog#batchCompletionDialog {
+    background-color: #1e1e1e;
+    color: #cccccc;
+}
+
+#batchDialogTitle {
+    font-size: 14pt;
+    font-weight: 700;
+    padding: 8px 0px;
+}
+
+#batchDialogTitle[state="success"] {
+    color: #28a745;  /* Green success */
+}
+
+#batchDialogTitle[state="warning"] {
+    color: #ffc107;  /* Yellow/Orange warning */
+}
+
+/* Dialog stats labels */
+#batchCompletionDialog QLabel {
+    color: #cccccc;
+    font-size: 10pt;
+    padding: 2px 0px;
+}
+
+/* ============================================
+   MODERN POLISH ADDITIONS
+   ============================================ */
+
+/* Add subtle shadow effect to settings frame */
+#batchSettingsFrame {
+    /* Already defined above, just noting it matches your theme */
+}
+
+/* Smooth transitions */
+BatchWindow QPushButton,
+#batchStatusLabel,
+#batchOverallProgress {
+    /* Smooth state transitions handled by Qt */
+}
+
+/* File table scrollbar - match app theme */
+BatchWindow QTableWidget QScrollBar:vertical {
+    background-color: transparent;
+    width: 12px;
+    border: none;
+    margin: 0px;
+}
+
+BatchWindow QTableWidget QScrollBar::handle:vertical {
+    background-color: #424242;
+    min-height: 30px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+BatchWindow QTableWidget QScrollBar::handle:vertical:hover {
+    background-color: #4e4e4e;
+}
+
+BatchWindow QTableWidget QScrollBar::handle:vertical:pressed {
+    background-color: #007acc;
+}
+
+BatchWindow QTableWidget QScrollBar::add-line:vertical,
+BatchWindow QTableWidget QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+/* ============================================
+   ADDITIONAL MODERN TOUCHES
+   ============================================ */
+
+/* Status icons in table - ensure they're visible */
+BatchWindow QTableWidget::item:first-child {
+    text-align: center;
+    font-size: 12pt;  /* Larger emoji icons */
+}
+
+/* Size column color indicators already handled in Python code */
+/* Green for reduced, red for increased - using QTableWidgetItem.setForeground() */
+
+/* Hover effect on table rows for better interactivity */
+BatchWindow QTableWidget::item:selected {
+    background-color: #094771;
+    color: #ffffff;
+}
+
+/* Make sure tooltips work with dark theme */
+BatchWindow QToolTip {
+    background-color: #252526;
+    color: #cccccc;
+    border: 1px solid #007acc;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 9pt;
 }

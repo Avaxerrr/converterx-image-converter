@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem, QProgressBar,
     QHeaderView, QAbstractItemView, QFrame
 )
-from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, Signal, QTimer, QSize
+from PySide6.QtGui import QColor, QIcon
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -36,6 +36,7 @@ class BatchWindow(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("BatchWindow")
         self.setWindowTitle("Batch Conversion")
         self.setMinimumSize(700, 500)
         self.resize(800, 600)
@@ -65,6 +66,46 @@ class BatchWindow(QDialog):
         # Override close event (hide instead of destroy)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
+    def _get_status_icon(self, icon_name: str) -> QIcon:
+        """
+        Get QIcon from icons folder.
+
+        Args:
+            icon_name: Name of icon (e.g., 'pending', 'processing', 'success', 'error')
+
+        Returns:
+            QIcon object or empty QIcon if not found
+        """
+        import os
+        from pathlib import Path
+
+        # Map icon names to actual files in your icons folder
+        icon_map = {
+            'pending': 'schedule.svg',
+            'processing': 'cycle.svg',
+            'success': 'done_outline.svg',
+            'error': 'warning.svg',
+            'settings': 'settings.svg',
+            'folder': 'folder.svg',
+        }
+
+        icon_filename = icon_map.get(icon_name, '')
+        if not icon_filename:
+            return QIcon()
+
+        # Get absolute path from project root
+        # Assumes this file is in ui/ folder and icons/ is at project root
+        current_file = Path(__file__)  # batch_window.py location
+        project_root = current_file.parent.parent  # Go up to project root
+        icon_path = project_root / 'icons' / icon_filename
+
+        if icon_path.exists():
+            return QIcon(str(icon_path))
+        else:
+            # Debug: print the path we're trying to use
+            print(f"Icon not found: {icon_path}")
+            return QIcon()
+
     def _setup_ui(self):
         """Build the batch window UI."""
         layout = QVBoxLayout(self)
@@ -72,23 +113,19 @@ class BatchWindow(QDialog):
 
         # Settings Snapshot Header
         self.settings_frame = self._create_settings_header()
+        self.settings_frame.setObjectName("batchSettingsFrame")  # Add object name
         layout.addWidget(self.settings_frame)
-
-        # Separator
-        separator1 = QFrame()
-        separator1.setFrameShape(QFrame.HLine)
-        separator1.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(separator1)
 
         # Overall Progress Section
         progress_layout = QVBoxLayout()
         progress_layout.setSpacing(6)
 
         self.overall_label = QLabel("Overall Progress: 0/0 files (0%)")
-        self.overall_label.setStyleSheet("font-weight: bold; font-size: 13px;")
+        self.overall_label.setObjectName("batchOverallLabel")  # Add object name
         progress_layout.addWidget(self.overall_label)
 
         self.overall_progress = QProgressBar()
+        self.overall_progress.setObjectName("batchOverallProgress")  # Add object name
         self.overall_progress.setRange(0, 100)
         self.overall_progress.setValue(0)
         self.overall_progress.setTextVisible(True)
@@ -99,34 +136,38 @@ class BatchWindow(QDialog):
 
         # File List Table
         self.file_table = self._create_file_table()
-        layout.addWidget(self.file_table, 1)  # Stretch factor 1
+        layout.addWidget(self.file_table, 1)
 
         # Status Summary Bar
         self.status_label = QLabel("Status: Ready")
+        self.status_label.setObjectName("batchStatusLabel")  # Add object name
         layout.addWidget(self.status_label)
 
         # Elapsed/Remaining Time
         self.time_label = QLabel("Elapsed: 00:00:00")
-        self.time_label.setStyleSheet("padding: 4px;")
+        self.time_label.setObjectName("batchTimeLabel")  # Add object name
         layout.addWidget(self.time_label)
 
-        # Action Buttons
+        # Action Buttons (no changes needed)
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.pause_btn = QPushButton("Pause")  # ← ADD THIS
+        self.pause_btn = QPushButton("Pause")
+        self.pause_btn.setObjectName("pauseButton")
         self.pause_btn.setFixedWidth(120)
         self.pause_btn.clicked.connect(self._on_pause_clicked)
         self.pause_btn.setEnabled(False)
         button_layout.addWidget(self.pause_btn)
 
         self.cancel_btn = QPushButton("Cancel All")
+        self.cancel_btn.setObjectName("cancelButton")
         self.cancel_btn.setFixedWidth(120)
         self.cancel_btn.clicked.connect(self._on_cancel_clicked)
         self.cancel_btn.setEnabled(False)
         button_layout.addWidget(self.cancel_btn)
 
         self.close_btn = QPushButton("Close")
+        self.close_btn.setObjectName("closeButton")
         self.close_btn.setFixedWidth(120)
         self.close_btn.clicked.connect(self.hide)
         button_layout.addWidget(self.close_btn)
@@ -141,12 +182,12 @@ class BatchWindow(QDialog):
         layout.setSpacing(4)
         layout.setContentsMargins(12, 10, 12, 10)
 
-        self.settings_label = QLabel("⚙️ Settings: Not set")
-        self.settings_label.setStyleSheet("font-weight: 500; font-size: 12px;")
+        self.settings_label = QLabel("Settings: Not set")  # Removed ⚙️ emoji
+        self.settings_label.setObjectName("batchSettingsText")
         layout.addWidget(self.settings_label)
 
-        self.output_label = QLabel("📁 Output: Not set")
-        self.output_label.setStyleSheet("font-size: 11px; color: #555;")
+        self.output_label = QLabel("Output: Not set")  # Removed 📁 emoji
+        self.output_label.setObjectName("batchOutputText")
         layout.addWidget(self.output_label)
 
         return frame
@@ -166,13 +207,14 @@ class BatchWindow(QDialog):
 
         table.setColumnWidth(0, 60)
         table.setColumnWidth(2, 150)
-        table.setColumnWidth(3, 100)
+        table.setColumnWidth(3, 170)
 
         # Table settings
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
+        table.setIconSize(QSize(20, 20))  # Add icon size
 
         return table
 
@@ -203,9 +245,9 @@ class BatchWindow(QDialog):
 
         if settings.target_size_kb:
             size_str = f"Target {settings.target_size_kb:.0f} KB"
-            settings_text = f"⚙️ Settings: {format_str} • {quality_str} • {resize_str} • {size_str}"
+            settings_text = f"Settings: {format_str} • {quality_str} • {resize_str} • {size_str}"
         else:
-            settings_text = f"⚙️ Settings: {format_str} • {quality_str} • {resize_str}"
+            settings_text = f"Settings: {format_str} • {quality_str} • {resize_str}"
 
         self.settings_label.setText(settings_text)
 
@@ -213,7 +255,7 @@ class BatchWindow(QDialog):
         output_str = str(output_folder)
         if len(output_str) > 60:
             output_str = "..." + output_str[-57:]
-        self.output_label.setText(f"📁 Output: {output_str}")
+        self.output_label.setText(f"Output: {output_str}")
 
     def start_batch(self, files: List[ImageFile]):
         """
@@ -237,7 +279,8 @@ class BatchWindow(QDialog):
             self.file_rows[image_file] = row
 
             # Status icon
-            status_item = QTableWidgetItem("⏳")
+            status_item = QTableWidgetItem()
+            status_item.setIcon(self._get_status_icon('pending'))
             status_item.setTextAlignment(Qt.AlignCenter)
             self.file_table.setItem(row, 0, status_item)
 
@@ -284,7 +327,8 @@ class BatchWindow(QDialog):
 
         # Update status icon
         status_item = self.file_table.item(row, 0)
-        status_item.setText("⚙️")
+        status_item.setIcon(self._get_status_icon('processing'))
+        status_item.setText("")  # Clear any text
 
         # Scroll to current file
         self.file_table.scrollToItem(status_item)
@@ -315,7 +359,8 @@ class BatchWindow(QDialog):
 
         # Update status icon
         status_item = self.file_table.item(row, 0)
-        status_item.setText("✅")
+        status_item.setIcon(self._get_status_icon('success'))
+        status_item.setText("")  # Clear any text
 
         # Update progress bar
         progress_bar = self.file_table.cellWidget(row, 2)
@@ -379,7 +424,8 @@ class BatchWindow(QDialog):
 
         # Update status icon
         status_item = self.file_table.item(row, 0)
-        status_item.setText("❌")
+        status_item.setIcon(self._get_status_icon('error'))
+        status_item.setText("")  # Clear any text
 
         # Update size column with "Failed"
         size_item = self.file_table.item(row, 3)
@@ -401,21 +447,23 @@ class BatchWindow(QDialog):
         # Stop timer
         self.elapsed_timer.stop()
 
-        # Disable cancel button
+        # Disable buttons
         self.cancel_btn.setEnabled(False)
         self.pause_btn.setEnabled(False)
 
-        # Update status
+        # Update status with property for styling
         if failed == 0:
-            status_text = f"✅ Batch Complete: All {successful} files converted successfully!"
-            self.status_label.setStyleSheet(
-                "padding: 8px; background-color: #d4edda; border-radius: 4px; font-weight: bold;")
+            status_text = f"Batch Complete: All {successful} files converted successfully!"
+            self.status_label.setProperty("state", "success")
         else:
-            status_text = f"⚠️ Batch Complete: {successful} successful, {failed} failed"
-            self.status_label.setStyleSheet(
-                "padding: 8px; background-color: #fff3cd; border-radius: 4px; font-weight: bold;")
+            status_text = f"Batch Complete: {successful} successful, {failed} failed"
+            self.status_label.setProperty("state", "warning")
 
         self.status_label.setText(status_text)
+
+        # Force style refresh
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
 
         # Show completion dialog
         self._show_completion_dialog(total, successful, failed)
@@ -428,37 +476,31 @@ class BatchWindow(QDialog):
         self.overall_progress.setValue(percentage)
         self.overall_label.setText(f"Overall Progress: {processed}/{self.total_files} files ({percentage}%)")
 
-        # Change progress bar color based on status
+        # Set property for QSS styling based on state
         if percentage == 100:
             if self.failed_count == 0:
-                # All successful - green
-                self.overall_progress.setStyleSheet("""
-                    QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
-                    QProgressBar::chunk { background-color: #28a745; }
-                """)
+                self.overall_progress.setProperty("state", "success")  # All successful
             elif self.failed_count == self.total_files:
-                # All failed - red
-                self.overall_progress.setStyleSheet("""
-                    QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
-                    QProgressBar::chunk { background-color: #dc3545; }
-                """)
+                self.overall_progress.setProperty("state", "error")  # All failed
             else:
-                # Mixed - orange
-                self.overall_progress.setStyleSheet("""
-                    QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
-                    QProgressBar::chunk { background-color: #ffc107; }
-                """)
+                self.overall_progress.setProperty("state", "warning")  # Mixed
         else:
-            # In progress - blue
-            self.overall_progress.setStyleSheet("""
-                QProgressBar { border: 1px solid #ccc; border-radius: 4px; text-align: center; }
-                QProgressBar::chunk { background-color: #007bff; }
-            """)
+            self.overall_progress.setProperty("state", "processing")  # In progress
+
+        # Force style refresh
+        self.overall_progress.style().unpolish(self.overall_progress)
+        self.overall_progress.style().polish(self.overall_progress)
 
     def _update_status_summary(self):
         """Update status bar with current counts."""
-        processing = len([1 for i in range(self.file_table.rowCount())
-                          if self.file_table.item(i, 0).text() == "⚙️"])
+        from PySide6.QtCore import QSize
+
+        processing = 0
+        for i in range(self.file_table.rowCount()):
+            status_item = self.file_table.item(i, 0)
+            if status_item and not status_item.icon().isNull():
+                # Check if it's the processing icon (you can refine this check)
+                processing += 1
 
         # Calculate total saved
         saved_mb = self.total_saved_bytes / (1024 * 1024)
@@ -524,7 +566,7 @@ class BatchWindow(QDialog):
         self.cancel_btn.setText("Cancelling...")
 
         # Update status
-        self.status_label.setText("⏸️ Cancelling batch... (current files will finish)")
+        self.status_label.setText("Cancelling batch... (current files will finish)")
 
     def closeEvent(self, event):
         """Override close event to save state and hide instead of destroy."""
@@ -547,56 +589,49 @@ class BatchWindow(QDialog):
             self.activateWindow()
 
     def _show_completion_dialog(self, total: int, successful: int, failed: int):
-        """
-        Show batch completion summary dialog.
-
-        Args:
-            total: Total files processed
-            successful: Successfully converted
-            failed: Failed files
-        """
+        """Show batch completion summary dialog."""
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Batch Conversion Complete")
         dialog.setModal(True)
         dialog.setMinimumWidth(400)
+        dialog.setObjectName("batchCompletionDialog")  # Add object name
 
         layout = QVBoxLayout(dialog)
         layout.setSpacing(16)
 
         # Title
         if failed == 0:
-            title_text = "✅ Batch Conversion Complete!"
-            title_color = "#28a745"
+            title_text = "Batch Conversion Complete!"
         else:
-            title_text = "⚠️ Batch Conversion Complete"
-            title_color = "#ffc107"
+            title_text = "Batch Conversion Complete"
 
         title = QLabel(title_text)
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {title_color};")
+        title.setObjectName("batchDialogTitle")
+        title.setProperty("state", "success" if failed == 0 else "warning")
         layout.addWidget(title)
 
         # Stats
         stats_layout = QVBoxLayout()
         stats_layout.setSpacing(8)
 
-        stats_layout.addWidget(QLabel(f"✅ Successful: {successful} files"))
+        stats_layout.addWidget(QLabel(f"Successful: {successful} files"))
         if failed > 0:
-            stats_layout.addWidget(QLabel(f"❌ Failed: {failed} files"))
+            stats_layout.addWidget(QLabel(f"Failed: {failed} files"))
 
         saved_mb = self.total_saved_bytes / (1024 * 1024)
-        stats_layout.addWidget(QLabel(f"💾 Total Saved: {saved_mb:.2f} MB"))
+        stats_layout.addWidget(QLabel(f"Total Saved: {saved_mb:.2f} MB"))
 
         if self.start_time:
             elapsed = datetime.now() - self.start_time
             hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
             minutes, seconds = divmod(remainder, 60)
-            stats_layout.addWidget(QLabel(f"⏱️ Time Elapsed: {hours:02d}:{minutes:02d}:{seconds:02d}"))
+            stats_layout.addWidget(QLabel(f"Time Elapsed: {hours:02d}:{minutes:02d}:{seconds:02d}"))
 
         layout.addLayout(stats_layout)
 
-        # Buttons
+        # Buttons (no changes needed - use default button styling)
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
@@ -664,7 +699,7 @@ class BatchWindow(QDialog):
             # Request pause
             self.pause_requested.emit()
             self.pause_btn.setText("Resume")
-            self.status_label.setText("⏸️ Batch paused (active files will finish)")
+            self.status_label.setText("Batch paused (active files will finish)")
             logger.debug("Pause requested by user", "BatchWindow")
         else:
             # Request resume
