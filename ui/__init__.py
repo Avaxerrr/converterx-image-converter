@@ -3,5 +3,6 @@ from .file_list_widget import FileListWidget
 from .preview import PreviewWidget
 from .settings import SettingsPanel
 from .metadata_dialog import MetadataDialog
+from .batch_window import BatchWindow
 
-__all__ = ['MainWindow', 'FileListWidget', 'PreviewWidget', 'SettingsPanel', 'MetadataDialog']
+__all__ = ['MainWindow', 'FileListWidget', 'PreviewWidget', 'SettingsPanel', 'MetadataDialog','BatchWindow']
