@@ -85,8 +85,14 @@ def apply_suffix(
     format_name = settings.output_format.name  # "WEBP", "AVIF", etc.
     quality = settings.quality
 
-    # Pass custom_suffix to apply method
-    return template.apply(original_stem, format_name, quality, settings.custom_suffix)
+    # Pass custom_suffix and enable_filename_suffix flag to apply method
+    return template.apply(
+        original_stem,
+        format_name,
+        quality,
+        settings.custom_suffix,
+        settings.enable_filename_suffix
+    )
 
 
 

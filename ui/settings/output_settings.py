@@ -174,6 +174,16 @@ class OutputSettingsWidget(QWidget):
         filename_layout = QVBoxLayout(filename_group)
         filename_layout.setSpacing(6)
 
+        # 1) Add the toggle checkbox visibly inside the group
+        self.enable_suffix_check = QCheckBox("Enable filename suffix")
+        self.enable_suffix_check.setChecked(True)  # Default ON
+        self.enable_suffix_check.setToolTip("Toggle adding suffix to converted filenames")
+        filename_layout.addWidget(self.enable_suffix_check)
+
+        # 2) React to toggle: gray out pattern controls when disabled
+        self.enable_suffix_check.stateChanged.connect(lambda: self._on_enable_suffix_toggled())
+        self.enable_suffix_check.stateChanged.connect(lambda: self.settings_changed.emit())
+
         # Template dropdown
         template_layout = QHBoxLayout()
         template_layout.addWidget(QLabel("Suffix:"))
@@ -181,7 +191,7 @@ class OutputSettingsWidget(QWidget):
         self.filename_template_combo.addItem("_converted", FilenameTemplate.CONVERTED)
         self.filename_template_combo.addItem("_[format]", FilenameTemplate.FORMAT)
         self.filename_template_combo.addItem("_Q[quality]", FilenameTemplate.QUALITY)
-        self.filename_template_combo.addItem("Custom...", FilenameTemplate.CUSTOM)  # Changed to use enum
+        self.filename_template_combo.addItem("Custom...", FilenameTemplate.CUSTOM)  # enum
         self.filename_template_combo.currentIndexChanged.connect(self._on_template_changed)
 
         template_layout.addWidget(self.filename_template_combo, 1)
@@ -208,6 +218,7 @@ class OutputSettingsWidget(QWidget):
         self.auto_increment_check.stateChanged.connect(lambda: self.settings_changed.emit())
         filename_layout.addWidget(self.auto_increment_check)
 
+        # Add the group to the main layout
         layout.addWidget(filename_group)
 
     def _on_format_changed(self):
@@ -303,7 +314,8 @@ class OutputSettingsWidget(QWidget):
             'custom_output_folder': self.output_folder,
             'filename_template': self.filename_template_combo.currentData(),
             'custom_suffix': self.custom_suffix_input.text().strip(),
-            'auto_increment': self.auto_increment_check.isChecked()
+            'auto_increment': self.auto_increment_check.isChecked(),
+            'enable_filename_suffix': self.enable_suffix_check.isChecked()
         }
 
         # Handle target size
@@ -349,3 +361,8 @@ class OutputSettingsWidget(QWidget):
         else:
             self.estimated_size_label.setText("Estimated Size: —")
             self.estimated_size_label.hide()
+
+    def _on_enable_suffix_toggled(self):
+        enabled = self.enable_suffix_check.isChecked()
+        self.filename_template_combo.setEnabled(enabled)
+        self.custom_suffix_container.setEnabled(enabled)

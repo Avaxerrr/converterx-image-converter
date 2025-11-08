@@ -32,7 +32,7 @@ class FilenameTemplate(Enum):
     QUALITY = "_Q{quality}"
     CUSTOM = "custom"  # Indicates user will provide custom suffix
 
-    def apply(self, original_stem: str, format_name: str, quality: int, custom_suffix: str = "") -> str:
+    def apply(self, original_stem: str, format_name: str, quality: int, custom_suffix: str = "", enable_suffix: bool = True) -> str:
         """
         Apply template to generate new filename stem.
 
@@ -45,6 +45,10 @@ class FilenameTemplate(Enum):
         Returns:
             New filename stem with suffix applied
         """
+
+        if not enable_suffix:
+            return original_stem
+
         if self == FilenameTemplate.CONVERTED:
             return f"{original_stem}_converted"
         elif self == FilenameTemplate.FORMAT:
@@ -76,6 +80,7 @@ class ConversionSettings:
     webp_method: int = 6
     avif_speed: int = 4
     avif_range: str = "full"
+    enable_filename_suffix: bool = True
 
     # Resize settings
     resize_mode: ResizeMode = ResizeMode.NONE
