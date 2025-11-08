@@ -26,7 +26,7 @@ class OutputPreviewSignals(QObject):
     """Signals for output preview worker."""
 
     # Emits QPixmap when generation succeeds
-    finished = Signal(QPixmap)
+    finished = Signal(QPixmap, int)
 
     # Emits error message string when generation fails
     error = Signal(str)
@@ -63,11 +63,7 @@ class OutputPreviewWorker(QRunnable):
 
     @Slot()
     def run(self):
-        """
-        Execute preview generation in worker thread.
-
-        This method runs in a separate thread from the Qt thread pool.
-        """
+        """Execute preview generation in worker thread."""
         logger.info(
             f"Worker thread started for {self.image_path.name}",
             source="OutputPreviewWorker"
@@ -87,13 +83,12 @@ class OutputPreviewWorker(QRunnable):
                 return
 
             logger.debug(
-                f"PIL Image generated: {pil_image.size[0]}×{pil_image.size[1]} mode={pil_image.mode}",
+                f"PIL Image generated: {pil_image.size[0]}×{pil_image.size[1]} (mode={pil_image.mode})",
                 source="OutputPreviewWorker"
             )
 
-            # Step 2: Convert PIL Image to QPixmap
-            # We need to apply compression/quality to get accurate preview
-            pixmap = self._pil_to_qpixmap_with_compression(pil_image, self.settings)
+            # Step 2: Convert to QPixmap with compression and get file size
+            pixmap, file_size_bytes = self.pil_to_qpixmap_with_compression(pil_image, self.settings)
 
             if pixmap.isNull():
                 error_msg = f"Failed to convert PIL Image to QPixmap for {self.image_path.name}"
@@ -102,13 +97,12 @@ class OutputPreviewWorker(QRunnable):
                 return
 
             logger.success(
-                f"QPixmap created: {pixmap.width()}×{pixmap.height()}",
+                f"QPixmap created: {pixmap.width()}×{pixmap.height()}, estimated size: {file_size_bytes / 1024:.2f} KB",
                 source="OutputPreviewWorker"
             )
 
-            # Step 3: Emit success signal with pixmap
-            self.signals.finished.emit(pixmap)
-
+            # Step 3: Emit success signal with pixmap AND file size
+            self.signals.finished.emit(pixmap, file_size_bytes)
             logger.info(
                 f"Worker completed successfully for {self.image_path.name}",
                 source="OutputPreviewWorker"
@@ -119,29 +113,25 @@ class OutputPreviewWorker(QRunnable):
             logger.error(error_msg, source="OutputPreviewWorker")
             self.signals.error.emit(error_msg)
 
-    def _pil_to_qpixmap_with_compression(
-            self,
-            pil_image: Image.Image,
-            settings: ConversionSettings
-    ) -> QPixmap:
+    def pil_to_qpixmap_with_compression(self, pil_image: Image.Image, settings: ConversionSettings) -> tuple[
+        QPixmap, int]:
         """
         Convert PIL Image to QPixmap WITH compression/quality applied.
 
-        This simulates the compression by saving to an in-memory buffer
-        with the actual quality/compression settings, then loading back.
-        This gives a more accurate preview of what the exported image will look like.
+        This simulates the compression by saving to an in-memory buffer with the actual
+        quality/compression settings, then loading back. This gives a more accurate
+        preview of what the exported image will look like.
 
         Args:
             pil_image: PIL Image to convert
             settings: Settings containing quality/compression info
 
         Returns:
-            QPixmap for display
+            Tuple of (QPixmap for display, file_size_bytes)
         """
         try:
             # Get preview-specific save kwargs (quality, compression, lossless)
             save_kwargs = OutputPreviewGenerator.get_preview_kwargs(settings)
-
             logger.debug(
                 f"Applying compression with kwargs: {save_kwargs}",
                 source="OutputPreviewWorker"
@@ -152,36 +142,42 @@ class OutputPreviewWorker(QRunnable):
             pil_image.save(buffer, **save_kwargs)
             buffer.seek(0)
 
+            # Get file size from buffer
+            file_size_bytes = len(buffer.getvalue())
+            logger.info(
+                f"Estimated output size: {file_size_bytes / 1024:.2f} KB",
+                source="OutputPreviewWorker"
+            )
+
             # Load back from buffer (now with compression applied)
             compressed_image = Image.open(buffer)
 
             # Convert to RGB for QImage (simplest/most compatible)
-            if compressed_image.mode not in ('RGB', 'RGBA'):
-                compressed_image = compressed_image.convert('RGB')
+            if compressed_image.mode not in ("RGB", "RGBA"):
+                compressed_image = compressed_image.convert("RGB")
                 logger.debug(
                     f"Converted to RGB for QImage display",
                     source="OutputPreviewWorker"
                 )
 
             # Convert to QImage
-            if compressed_image.mode == 'RGB':
+            if compressed_image.mode == "RGB":
                 qimage = self._pil_rgb_to_qimage(compressed_image)
-            elif compressed_image.mode == 'RGBA':
+            elif compressed_image.mode == "RGBA":
                 qimage = self._pil_rgba_to_qimage(compressed_image)
             else:
                 # Fallback: convert to RGB
-                compressed_image = compressed_image.convert('RGB')
+                compressed_image = compressed_image.convert("RGB")
                 qimage = self._pil_rgb_to_qimage(compressed_image)
 
             # Convert QImage to QPixmap
             pixmap = QPixmap.fromImage(qimage)
-
             logger.debug(
-                f"Conversion complete: PIL → compressed → QPixmap ({pixmap.width()}×{pixmap.height()})",
+                f"Conversion complete: PIL (compressed) → QPixmap ({pixmap.width()}×{pixmap.height()})",
                 source="OutputPreviewWorker"
             )
 
-            return pixmap
+            return (pixmap, file_size_bytes)  # MODIFIED: Return tuple
 
         except Exception as e:
             logger.error(
@@ -189,7 +185,7 @@ class OutputPreviewWorker(QRunnable):
                 source="OutputPreviewWorker"
             )
             # Fallback: direct conversion without compression
-            return self._pil_to_qpixmap_direct(pil_image)
+            return (self._pil_to_qpixmap_direct(pil_image), 0)
 
     @staticmethod
     def _pil_rgb_to_qimage(pil_image: Image.Image) -> QImage:

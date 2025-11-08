@@ -3,15 +3,15 @@ from PySide6.QtWidgets import (
     QFileDialog, QStatusBar, QMessageBox, QProgressDialog, QDialog
 )
 from PySide6.QtCore import Qt, QTimer, QThreadPool, QSettings
-from PySide6.QtGui import QShortcut, QKeySequence
+from PySide6.QtGui import QShortcut, QKeySequence, QPixmap
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Tuple
 import os
 import subprocess
 import platform
 
 from core.app_settings import AppSettingsController
-from core.format_settings import ImageFormat  # NEW: Import for defaults
+from core.format_settings import ImageFormat
 from models import ImageFile
 from ui.app_settings import AppSettingsDialog
 from ui.batch_window import BatchWindow
@@ -46,11 +46,14 @@ class MainWindow(QMainWindow):
         # QSettings for persistent window state
         self.settings = QSettings("ConverterX", "ImageConverter")
 
-        # NEW: Create App Settings Controller BEFORE _setup_ui
+        # Create App Settings Controller
         self.app_settings = AppSettingsController()
         logger.info("App settings controller initialized", source="MainWindow")
 
-        # NEW: Apply thread pool size setting on startup
+        # Connect cache clear signal
+        self.app_settings.clear_caches_requested.connect(self._on_clear_all_caches)
+
+        # Apply thread pool size setting on startup
         self._apply_threadpool_setting()
 
         # OUTPUT PREVIEW: Debounce timer (load from settings)
@@ -61,13 +64,17 @@ class MainWindow(QMainWindow):
         self.output_preview_debounce_timer.setInterval(debounce)
         logger.debug(f"Output preview debounce timer initialized ({debounce}ms)", source="MainWindow")
 
+        # Output preview cache {(file_path, settings_hash): QPixmap}
+        self.output_preview_cache: Dict[tuple, Tuple[QPixmap, int]] = {}
+        logger.debug("Output preview cache initialized", source="MainWindow")
+
         self._setup_ui()
         self._connect_signals()
 
         # Restore window geometry and splitter state
         self._restore_window_state()
 
-        # NEW: Apply default quality and format from app settings
+        # Apply default quality and format from app settings
         self._apply_default_settings()
 
         # Initialize settings from settings panel AFTER signals are connected
@@ -141,7 +148,7 @@ class MainWindow(QMainWindow):
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
         self.settings_panel.convert_requested.connect(self._on_convert_selected)
 
-        # NEW: App settings button signal
+        # App settings button signal
         self.settings_panel.app_settings_requested.connect(self._open_app_settings)
         logger.debug("App settings button connected", source="MainWindow")
 
@@ -167,7 +174,7 @@ class MainWindow(QMainWindow):
             paths = [Path(p) for p in file_paths]
             self.status_bar.showMessage("Loading files...")
 
-            # NEW: Log thread pool status before loading
+            # Log thread pool status before loading
             self._log_threadpool_status()
 
             image_files = load_image_files(paths)
@@ -195,7 +202,9 @@ class MainWindow(QMainWindow):
             self.file_list.clear_files()
             self.preview.clear_preview()
             self.settings_panel.set_convert_enabled(False)
+            self.output_preview_cache.clear()  # NEW: Clear output preview cache
             self.status_bar.showMessage("Files cleared", 2000)
+            logger.debug("Output preview cache cleared", source="MainWindow")
 
     def _on_file_selected(self, image_file):
         """Handle file selection in list."""
@@ -481,7 +490,7 @@ class MainWindow(QMainWindow):
                 )
 
     def _generate_output_preview(self):
-        """Generate output preview in worker thread."""
+        """Generate output preview in worker thread (with caching)."""
         selected_file = self.file_list.get_selected_file()
         if not selected_file:
             logger.warning("No image selected for preview generation", source="MainWindow")
@@ -491,8 +500,31 @@ class MainWindow(QMainWindow):
             logger.warning("No settings configured for preview generation", source="MainWindow")
             return
 
+        # Generate cache key
+        cache_key = self._get_output_preview_cache_key(
+            selected_file.path,
+            self.current_settings
+        )
+
+        # Check cache first
+        # Check cache first
+        if cache_key in self.output_preview_cache:
+            logger.info(
+                f"Output preview CACHE HIT: {selected_file.filename}",
+                source="MainWindow"
+            )
+            cached_pixmap, cached_file_size = self.output_preview_cache[cache_key]  # Unpack tuple
+            self.preview.display_output_preview(cached_pixmap)
+            self.settings_panel.output_widget.update_estimated_size(cached_file_size)  # Update UI
+            self.status_bar.showMessage(
+                f"✓ Output preview ready (cached) for {selected_file.filename}",
+                3000
+            )
+            return
+
+        # Cache miss - generate preview
         logger.info(
-            f"Generating output preview for {selected_file.filename} "
+            f"Output preview CACHE MISS: Generating for {selected_file.filename} "
             f"(Format: {self.current_settings.output_format.value}, "
             f"Quality: {self.current_settings.quality}, "
             f"Scale: {self.current_settings.resize_percentage}%)",
@@ -509,17 +541,44 @@ class MainWindow(QMainWindow):
 
         logger.debug("Output preview worker started in thread pool", source="MainWindow")
 
-    def _on_output_preview_ready(self, pixmap):
-        """Handle output preview generation complete."""
+    def _on_output_preview_ready(self, pixmap, file_size_bytes):
+        """Handle output preview generation complete (with caching and file size)."""
         logger.success(
-            f"Output preview ready: {pixmap.width()}×{pixmap.height()}",
+            f"Output preview ready: {pixmap.width()}×{pixmap.height()}, size: {file_size_bytes / 1024:.1f} KB",
             source="MainWindow"
         )
+
+        # Cache the preview
+        selected_file = self.file_list.get_selected_file()
+        if selected_file and self.current_settings:
+            cache_key = self._get_output_preview_cache_key(
+                selected_file.path,
+                self.current_settings
+            )
+
+            # Enforce cache size limit
+            max_cache_size = self.app_settings.get_output_preview_cache_size()
+            if len(self.output_preview_cache) >= max_cache_size:
+                # Remove oldest entry (first item)
+                oldest_key = next(iter(self.output_preview_cache))
+                del self.output_preview_cache[oldest_key]
+                logger.debug(
+                    f"Output preview cache full ({max_cache_size}), evicted oldest entry",
+                    source="MainWindow"
+                )
+
+            self.output_preview_cache[cache_key] = (pixmap, file_size_bytes)  # Cache both
+            logger.info(
+                f"Cached output preview | Cache size: {len(self.output_preview_cache)}/{max_cache_size}",
+                source="MainWindow"
+            )
 
         self.preview.hide_loading_overlay()
         self.preview.display_output_preview(pixmap)
 
-        selected_file = self.file_list.get_selected_file()
+        # Update estimated file size in settings panel
+        self.settings_panel.output_widget.update_estimated_size(file_size_bytes)
+
         if selected_file:
             self.status_bar.showMessage(
                 f"✓ Output preview ready for {selected_file.filename}",
@@ -683,7 +742,7 @@ class MainWindow(QMainWindow):
             logger.debug("Batch window shown", "MainWindow")
 
     # ==========================================
-    #  APP SETTINGS METHODS (NEW)
+    #  APP SETTINGS METHODS
     # ==========================================
 
     def _apply_threadpool_setting(self) -> None:
@@ -761,7 +820,7 @@ class MainWindow(QMainWindow):
         self.output_preview_debounce_timer.setInterval(debounce)
         logger.info(f"Output preview debounce updated to {debounce}ms", source="MainWindow")
 
-        # NEW: Apply thread pool setting (takes effect for new workers)
+        # Apply thread pool setting (takes effect for new workers)
         thread_count = self.app_settings.get_threadpool_max_threads()
         current_count = QThreadPool.globalInstance().maxThreadCount()
 
@@ -788,3 +847,46 @@ class MainWindow(QMainWindow):
         self.preview.clear_preview()
         self.settings_panel.set_convert_enabled(False)
         logger.debug("Files removed - preview cleared", source="MainWindow")
+
+    def _get_output_preview_cache_key(self, file_path: Path, settings: ConversionSettings) -> tuple:
+        """
+        Generate cache key for output preview.
+
+        Key is a tuple of (file_path, settings_hash) so that:
+        - Same file with same settings = cache HIT
+        - Same file with different settings = cache MISS (regenerate)
+
+        Args:
+            file_path: Path to the image file
+            settings: ConversionSettings used for output preview
+
+        Returns:
+            Tuple cache key
+        """
+        # Create hash from settings that affect output preview
+        settings_hash = (
+            settings.output_format,
+            settings.quality,
+            settings.resize_mode,
+            settings.resize_percentage
+        )
+
+        return (file_path, settings_hash)
+
+    def _on_clear_all_caches(self):
+        """Handle cache clear request from app settings."""
+        # Clear output preview cache
+        self.output_preview_cache.clear()
+        logger.info("Output preview cache cleared", source="MainWindow")
+
+        # Clear preview widget caches (thumbnail + HD)
+        self.preview.preview_cache.clear()
+        self.preview.hd_cache.clear()
+        logger.info("Preview and HD caches cleared", source="MainWindow")
+
+        # Clear file list thumbnail cache
+        if hasattr(self.file_list, 'thumbnail_cache'):
+            self.file_list.thumbnail_cache.clear()
+            logger.info("Thumbnail cache cleared", source="MainWindow")
+
+        self.status_bar.showMessage("✓ All caches cleared", 3000)

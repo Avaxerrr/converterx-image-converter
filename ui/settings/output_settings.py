@@ -125,6 +125,12 @@ class OutputSettingsWidget(QWidget):
         self.metadata_check.stateChanged.connect(self.settings_changed.emit)
         layout.addWidget(self.metadata_check)
 
+        # Estimated File Size Display
+        self.estimated_size_label = QLabel("Estimated Size: —")
+        self.estimated_size_label.setObjectName("estimated-size-label")
+
+        layout.addWidget(self.estimated_size_label)
+
     def _on_format_changed(self):
         """Handle format change."""
         format_enum = self.format_combo.currentData()
@@ -198,3 +204,22 @@ class OutputSettingsWidget(QWidget):
     def get_selected_format(self) -> ImageFormat:
         """Get currently selected format."""
         return self.format_combo.currentData()
+
+    def update_estimated_size(self, size_bytes: int):
+        """
+        Update the estimated file size display.
+
+        Args:
+            size_bytes: Estimated file size in bytes (0 to hide)
+        """
+        if size_bytes > 0:
+            if size_bytes >= 1024 * 1024:  # >= 1 MB
+                size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
+            else:  # < 1 MB
+                size_str = f"{size_bytes / 1024:.1f} KB"
+
+            self.estimated_size_label.setText(f"Estimated Size: {size_str}")
+            self.estimated_size_label.show()
+        else:
+            self.estimated_size_label.setText("Estimated Size: —")
+            self.estimated_size_label.hide()

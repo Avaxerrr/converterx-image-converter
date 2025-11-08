@@ -13,6 +13,7 @@ Settings Categories:
 from PySide6.QtCore import QObject, Signal, QSettings, QThreadPool
 from typing import Optional, cast
 from core.format_settings import ImageFormat
+from utils.logger import logger
 
 
 class SettingsKeys:
@@ -32,6 +33,7 @@ class SettingsKeys:
     HD_CACHE_SIZE = "preview/hd_cache_size"
     PREVIEW_MAX_DIMENSION = "preview/max_dimension"
     OUTPUT_PREVIEW_DEBOUNCE = "preview/output_preview_debounce"
+    OUTPUT_PREVIEW_CACHE_SIZE = "preview/output_preview_cache_size"
 
     # Defaults category
     DEFAULT_QUALITY = "defaults/quality"
@@ -63,7 +65,7 @@ class AppSettingsController(QObject):
     performance_changed = Signal()
     preview_changed = Signal()
     defaults_changed = Signal()
-
+    clear_caches_requested = Signal()
     def __init__(self, settings: Optional[QSettings] = None):
         """
         Initialize settings controller.
@@ -167,6 +169,20 @@ class AppSettingsController(QObject):
             type=int
         )
         return cast(int, value)  # Type assertion for type checker
+
+    def get_output_preview_cache_size(self) -> int:
+        """
+        Get output preview cache size.
+
+        Returns:
+            Number of output previews kept in memory (1-20, default 2)
+        """
+        value = self.settings.value(
+            SettingsKeys.OUTPUT_PREVIEW_CACHE_SIZE,
+            2,  # Default
+            type=int
+        )
+        return cast(int, value)
 
     # ============================================================
     # DEFAULTS SETTINGS - Getters
@@ -333,6 +349,35 @@ class AppSettingsController(QObject):
 
         self.settings.setValue(SettingsKeys.OUTPUT_PREVIEW_DEBOUNCE, value)
         self.preview_changed.emit()
+
+    def set_output_preview_cache_size(self, value: int) -> None:
+        """
+        Set output preview cache size.
+
+        Args:
+            value: Number of output previews to cache (1-20)
+
+        Raises:
+            ValueError: If value is outside valid range
+        """
+        if not isinstance(value, int):
+            raise ValueError("output_preview_cache_size must be an integer")
+
+        if not 1 <= value <= 20:
+            raise ValueError("output_preview_cache_size must be between 1 and 20")
+
+        self.settings.setValue(SettingsKeys.OUTPUT_PREVIEW_CACHE_SIZE, value)
+        self.preview_changed.emit()
+
+    def request_clear_caches(self) -> None:
+        """
+        Request all caches to be cleared.
+
+        Emits signal that MainWindow and PreviewWidget can listen to.
+        This doesn't store state - it's just a trigger.
+        """
+        logger.info("Cache clear requested via app settings", source="AppSettings")
+        self.clear_caches_requested.emit()
 
     # ============================================================
     # DEFAULTS SETTINGS - Setters

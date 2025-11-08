@@ -10,7 +10,7 @@ Settings page for preview-related configuration:
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QSpinBox, QGroupBox
+    QSpinBox, QGroupBox, QPushButton
 )
 from PySide6.QtCore import Qt
 from typing import TYPE_CHECKING
@@ -111,6 +111,36 @@ class PreviewSettingsPage(QWidget):
         layout.addWidget(hd_cache_group)
 
         # ============================================================
+        # Output Preview Cache Size
+        # ============================================================
+        output_cache_group = QGroupBox("Output Preview Cache")
+        output_cache_layout = QVBoxLayout()
+        output_cache_layout.setSpacing(8)
+
+        output_label = QLabel("Output Preview Cache Size")
+        output_label.setStyleSheet("font-weight: 500;")
+
+        self.output_cache_spinbox = QSpinBox()
+        self.output_cache_spinbox.setRange(1, 20)
+        self.output_cache_spinbox.setValue(2)
+        self.output_cache_spinbox.setFixedWidth(100)
+        self.output_cache_spinbox.setToolTip(
+            "Number of output previews kept in memory.\n"
+            "Reuses cached previews if settings haven't changed.\n"
+            "Range: 1-20"
+        )
+
+        output_help = QLabel("Number of generated output previews kept in memory")
+        output_help.setStyleSheet("color: #858585; font-size: 11px;")
+        output_help.setWordWrap(True)
+
+        output_cache_layout.addWidget(output_label)
+        output_cache_layout.addWidget(self.output_cache_spinbox)
+        output_cache_layout.addWidget(output_help)
+        output_cache_group.setLayout(output_cache_layout)
+        layout.addWidget(output_cache_group)
+
+        # ============================================================
         # Preview Max Dimension
         # ============================================================
         dimension_group = QGroupBox("Preview Quality")
@@ -141,6 +171,34 @@ class PreviewSettingsPage(QWidget):
         dimension_layout.addWidget(dimension_help)
         dimension_group.setLayout(dimension_layout)
         layout.addWidget(dimension_group)
+
+        # ============================================================
+        # Clear All Caches Button (NEW)
+        # ============================================================
+        clear_cache_group = QGroupBox("Cache Management")
+        clear_cache_layout = QVBoxLayout()
+        clear_cache_layout.setSpacing(8)
+
+        clear_label = QLabel("Clear All Caches")
+        clear_label.setStyleSheet("font-weight: 500;")
+
+        self.clear_cache_btn = QPushButton("Clear All Preview Caches")
+        self.clear_cache_btn.setFixedWidth(200)
+        self.clear_cache_btn.setToolTip(
+            "Clear all cached previews (thumbnail, HD, and output preview caches).\n"
+            "Frees up memory immediately."
+        )
+        self.clear_cache_btn.clicked.connect(self._on_clear_cache_clicked)
+
+        clear_help = QLabel("Clears preview, HD, and output preview caches to free memory")
+        clear_help.setStyleSheet("color: #858585; font-size: 11px;")
+        clear_help.setWordWrap(True)
+
+        clear_cache_layout.addWidget(clear_label)
+        clear_cache_layout.addWidget(self.clear_cache_btn)
+        clear_cache_layout.addWidget(clear_help)
+        clear_cache_group.setLayout(clear_cache_layout)
+        layout.addWidget(clear_cache_group)
 
         # ============================================================
         # Output Preview Debounce
@@ -192,6 +250,9 @@ class PreviewSettingsPage(QWidget):
         self.dimension_spinbox.setValue(
             self.controller.get_preview_max_dimension()
         )
+        self.output_cache_spinbox.setValue(
+            self.controller.get_output_preview_cache_size()
+        )
         self.debounce_spinbox.setValue(
             self.controller.get_out_preview_debounce()
         )
@@ -212,6 +273,29 @@ class PreviewSettingsPage(QWidget):
         self.controller.set_preview_max_dimension(
             self.dimension_spinbox.value()
         )
+        self.controller.set_output_preview_cache_size(
+            self.output_cache_spinbox.value()
+        )
         self.controller.set_out_preview_debounce(
             self.debounce_spinbox.value()
         )
+
+    def _on_clear_cache_clicked(self) -> None:
+        """Handle clear cache button click."""
+        from PySide6.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self,
+            "Clear Caches",
+            "Clear all preview caches?\n\nThis will free memory but previews will need to regenerate.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self.controller.request_clear_caches()
+            QMessageBox.information(
+                self,
+                "Caches Cleared",
+                "All preview caches have been cleared."
+            )
