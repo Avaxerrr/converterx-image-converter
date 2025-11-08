@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Dict, Any, Optional
 
 
@@ -17,6 +18,41 @@ class ResizeMode(Enum):
     PERCENTAGE = "percentage"
 
 
+class OutputLocationMode(Enum):
+    """Output location modes for converted files."""
+    CUSTOM_FOLDER = "custom"
+    SAME_AS_SOURCE = "same"
+    ASK_EVERY_TIME = "ask"
+
+
+class FilenameTemplate(Enum):
+    """Filename suffix templates for output files."""
+    CONVERTED = "_converted"
+    FORMAT = "_{format}"
+    QUALITY = "_Q{quality}"
+
+    def apply(self, original_stem: str, format_name: str, quality: int) -> str:
+        """
+        Apply template to generate new filename stem.
+
+        Args:
+            original_stem: Original filename without extension
+            format_name: Output format name (e.g., "WebP", "AVIF")
+            quality: Quality setting (0-100)
+
+        Returns:
+            New filename stem with suffix applied
+        """
+        if self == FilenameTemplate.CONVERTED:
+            return f"{original_stem}_converted"
+        elif self == FilenameTemplate.FORMAT:
+            return f"{original_stem}_{format_name}"
+        elif self == FilenameTemplate.QUALITY:
+            return f"{original_stem}_Q{quality}"
+        return original_stem
+
+
+
 @dataclass
 class ConversionSettings:
     """Settings for image conversion."""
@@ -31,9 +67,15 @@ class ConversionSettings:
     avif_speed: int = 4
     avif_range: str = "full"
 
-    # NEW: Resize settings
+    # Resize settings
     resize_mode: ResizeMode = ResizeMode.NONE
     resize_percentage: float = 100.0  # 10-100%
+
+    # Output field
+    output_location_mode: OutputLocationMode = OutputLocationMode.CUSTOM_FOLDER
+    custom_output_folder: Path = Path.home() / "Downloads" / "Converted"
+    filename_template: FilenameTemplate = FilenameTemplate.CONVERTED
+    auto_increment: bool = True
 
     def to_pillow_kwargs(self, quality_override: Optional[int] = None) -> Dict[str, Any]:
         """

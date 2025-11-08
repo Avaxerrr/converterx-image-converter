@@ -20,6 +20,7 @@ Image Converter/
 |    +--- check_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- close_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- cycle.svg
+|    +--- default-settings.svg
 |    +--- delete.svg
 |    +--- done_all_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- done_outline.svg
@@ -29,8 +30,9 @@ Image Converter/
 |    +--- info.svg
 |    +--- pause_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- pending_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
+|    +--- performance-settings.svg
+|    +--- preview-settings.svg
 |    +--- preview.svg
-|    +--- previewasdasd.svg
 |    +--- progress.svg
 |    +--- progress_activity_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
 |    +--- rotate_left.svg
@@ -82,6 +84,7 @@ Image Converter/
 +--- utils
 |    +--- __init__.py
 |    +--- file_utils.py
+|    +--- filename_utils.py
 |    \--- logger.py
 |    
 +--- workers

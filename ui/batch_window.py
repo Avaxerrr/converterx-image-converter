@@ -664,7 +664,7 @@ class BatchWindow(QDialog):
                 break
 
     def _open_output_folder(self):
-        """Open output folder in file explorer."""
+        """Open output folder in file explorer (handles different output modes)."""
         if not hasattr(self, 'output_folder_path'):
             return
 
@@ -672,15 +672,38 @@ class BatchWindow(QDialog):
             import subprocess
             import platform
 
+            # Determine which folder to open
+            folder_to_open = self.output_folder_path
+
+            # Special handling for "Same as Source" mode
+            if str(self.output_folder_path) == "(Same as source files)":
+                # Find ANY completed file and open its folder
+                if hasattr(self, 'file_rows') and self.file_rows:
+                    # Just get the first file from file_rows
+                    first_file = next(iter(self.file_rows.keys()), None)
+                    if first_file:
+                        # Open the folder containing the source file
+                        folder_to_open = first_file.path.parent
+                        logger.info(f"Using source folder: {folder_to_open}", "BatchWindow")
+                    else:
+                        logger.warning("No files in file_rows", "BatchWindow")
+                        return
+                else:
+                    logger.warning("No file_rows attribute or empty", "BatchWindow")
+                    return
+
+            # Open the folder
             system = platform.system()
             if system == "Windows":
-                subprocess.run(['explorer', str(self.output_folder_path)])
+                subprocess.run(['explorer', str(folder_to_open)])
             elif system == "Darwin":  # macOS
-                subprocess.run(['open', str(self.output_folder_path)])
+                subprocess.run(['open', str(folder_to_open)])
             else:  # Linux
-                subprocess.run(['xdg-open', str(self.output_folder_path)])
+                subprocess.run(['xdg-open', str(folder_to_open)])
+
+            logger.info(f"Opened folder: {folder_to_open}", "BatchWindow")
+
         except Exception as e:
-            from utils.logger import logger
             logger.error(f"Failed to open output folder: {e}", "BatchWindow")
 
     def _restore_window_state(self):

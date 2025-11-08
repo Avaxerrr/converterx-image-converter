@@ -1,7 +1,7 @@
 """
 Output settings widget for image conversion.
 
-Handles format selection, quality/target size modes, and output folder.
+Handles format selection, quality/target size modes, output folder, and filename templates.
 """
 
 from PySide6.QtWidgets import (
@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 from pathlib import Path
-from core.format_settings import ImageFormat
+from core.format_settings import ImageFormat, OutputLocationMode, FilenameTemplate
 
 
 class OutputSettingsWidget(QWidget):
@@ -64,7 +64,7 @@ class OutputSettingsWidget(QWidget):
         quality_label_layout.addStretch()
         quality_layout.addLayout(quality_label_layout)
 
-        self.quality_slider = QSlider(Qt.Horizontal)
+        self.quality_slider = QSlider(Qt.Orientation.Horizontal)
         self.quality_slider.setMinimum(1)
         self.quality_slider.setMaximum(100)
         self.quality_slider.setValue(85)
@@ -81,11 +81,11 @@ class OutputSettingsWidget(QWidget):
         self.target_size_input = QLineEdit()
         self.target_size_input.setObjectName("target-size-input")
         self.target_size_input.setPlaceholderText("500")
-        self.target_size_input.textChanged.connect(self.settings_changed.emit)
+        self.target_size_input.textChanged.connect(lambda: self.settings_changed.emit())
         self.target_unit_combo = QComboBox()
         self.target_unit_combo.setObjectName("target-unit-combo")
         self.target_unit_combo.addItems(["KB", "MB"])
-        self.target_unit_combo.currentIndexChanged.connect(self.settings_changed.emit)
+        self.target_unit_combo.currentIndexChanged.connect(lambda: self.settings_changed.emit())
         target_layout.addWidget(self.target_size_input)
         target_layout.addWidget(self.target_unit_combo)
         target_layout.addStretch()
@@ -104,7 +104,7 @@ class OutputSettingsWidget(QWidget):
         self.png_level_spin.setMinimum(0)
         self.png_level_spin.setMaximum(9)
         self.png_level_spin.setValue(6)
-        self.png_level_spin.valueChanged.connect(self.settings_changed.emit)
+        self.png_level_spin.valueChanged.connect(lambda: self.settings_changed.emit())
         png_label_layout.addWidget(self.png_level_spin)
         png_label_layout.addStretch()
         png_layout.addLayout(png_label_layout)
@@ -122,14 +122,78 @@ class OutputSettingsWidget(QWidget):
 
         self.metadata_check = QCheckBox("Keep metadata")
         self.metadata_check.setChecked(True)
-        self.metadata_check.stateChanged.connect(self.settings_changed.emit)
+        self.metadata_check.stateChanged.connect(lambda: self.settings_changed.emit())
         layout.addWidget(self.metadata_check)
 
         # Estimated File Size Display
         self.estimated_size_label = QLabel("Estimated Size: —")
         self.estimated_size_label.setObjectName("estimated-size-label")
-
         layout.addWidget(self.estimated_size_label)
+
+        # ========== NEW: OUTPUT LOCATION SECTION ==========
+        location_group = QGroupBox("Output Location")
+        location_layout = QVBoxLayout(location_group)
+        location_layout.setSpacing(6)
+
+        # Custom folder option
+        self.output_mode_custom = QRadioButton("Custom Folder")
+        self.output_mode_custom.setChecked(True)
+        self.output_mode_custom.toggled.connect(self._on_output_mode_changed)
+        location_layout.addWidget(self.output_mode_custom)
+
+        # Custom folder path + browse button
+        folder_layout = QHBoxLayout()
+        folder_layout.setContentsMargins(20, 0, 0, 0)  # Indent
+        self.output_folder_edit = QLineEdit()
+        self.output_folder_edit.setText(str(self.output_folder))
+        self.output_folder_edit.setReadOnly(True)
+        self.output_folder_browse_btn = QPushButton("Browse")
+        self.output_folder_browse_btn.clicked.connect(self.browse_output_folder)
+        folder_layout.addWidget(self.output_folder_edit, 1)
+        folder_layout.addWidget(self.output_folder_browse_btn)
+        location_layout.addLayout(folder_layout)
+
+        # Same as source option
+        self.output_mode_source = QRadioButton("Same as Source")
+        self.output_mode_source.setToolTip("Save converted files next to original files")
+        self.output_mode_source.toggled.connect(self._on_output_mode_changed)
+        location_layout.addWidget(self.output_mode_source)
+
+        # Ask every time option
+        self.output_mode_ask = QRadioButton("Ask Every Time")
+        self.output_mode_ask.setToolTip("Choose output folder before each conversion")
+        self.output_mode_ask.toggled.connect(self._on_output_mode_changed)
+        location_layout.addWidget(self.output_mode_ask)
+
+        layout.addWidget(location_group)
+
+        # ========== NEW: FILENAME PATTERN SECTION ==========
+        filename_group = QGroupBox("Filename Pattern")
+        filename_group.setObjectName("FilenamePattern")
+        filename_layout = QVBoxLayout(filename_group)
+        filename_layout.setSpacing(6)
+
+        # Template dropdown
+        template_layout = QHBoxLayout()
+        template_layout.addWidget(QLabel("Suffix:"))
+        self.filename_template_combo = QComboBox()
+        self.filename_template_combo.addItem("_converted", FilenameTemplate.CONVERTED)
+        self.filename_template_combo.addItem("_[format]", FilenameTemplate.FORMAT)
+        self.filename_template_combo.addItem("_Q[quality]", FilenameTemplate.QUALITY)
+        self.filename_template_combo.addItem("Custom...", "custom")
+        self.filename_template_combo.currentIndexChanged.connect(lambda: self.settings_changed.emit())
+
+        template_layout.addWidget(self.filename_template_combo, 1)
+        filename_layout.addLayout(template_layout)
+
+        # Auto-increment checkbox
+        self.auto_increment_check = QCheckBox("Auto-increment if file exists")
+        self.auto_increment_check.setChecked(True)
+        self.auto_increment_check.setToolTip("Append _1, _2, _3... if filename already exists")
+        self.auto_increment_check.stateChanged.connect(lambda: self.settings_changed.emit())
+        filename_layout.addWidget(self.auto_increment_check)
+
+        layout.addWidget(filename_group)
 
     def _on_format_changed(self):
         """Handle format change."""
@@ -178,6 +242,26 @@ class OutputSettingsWidget(QWidget):
         self.quality_value_label.setText(str(value))
         self.settings_changed.emit()
 
+    def _on_output_mode_changed(self):
+        """Handle output location mode change."""
+        # Enable/disable folder controls based on mode
+        is_custom_mode = self.output_mode_custom.isChecked()
+        self.output_folder_edit.setEnabled(is_custom_mode)
+        self.output_folder_browse_btn.setEnabled(is_custom_mode)
+        self.settings_changed.emit()
+
+    def browse_output_folder(self):
+        """Open folder browser dialog."""
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Select Output Folder",
+            str(self.output_folder)
+        )
+        if folder:
+            self.output_folder = Path(folder)
+            self.output_folder_edit.setText(str(self.output_folder))
+            self.settings_changed.emit()
+
     def get_settings(self) -> dict:
         """Get current output settings as a dictionary."""
         settings = {
@@ -186,7 +270,12 @@ class OutputSettingsWidget(QWidget):
             'lossless': self.lossless_check.isChecked() if self.lossless_check.isVisible() else False,
             'keep_metadata': self.metadata_check.isChecked(),
             'png_compress_level': self.png_level_spin.value(),
-            'target_size_kb': None
+            'target_size_kb': None,
+            # NEW FIELDS
+            'output_location_mode': self._get_output_mode(),
+            'custom_output_folder': self.output_folder,
+            'filename_template': self.filename_template_combo.currentData(),
+            'auto_increment': self.auto_increment_check.isChecked()
         }
 
         # Handle target size
@@ -200,6 +289,15 @@ class OutputSettingsWidget(QWidget):
                 pass
 
         return settings
+
+    def _get_output_mode(self) -> OutputLocationMode:
+        """Get currently selected output location mode."""
+        if self.output_mode_custom.isChecked():
+            return OutputLocationMode.CUSTOM_FOLDER
+        elif self.output_mode_source.isChecked():
+            return OutputLocationMode.SAME_AS_SOURCE
+        else:  # output_mode_ask
+            return OutputLocationMode.ASK_EVERY_TIME
 
     def get_selected_format(self) -> ImageFormat:
         """Get currently selected format."""

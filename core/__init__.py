@@ -1,6 +1,23 @@
+"""
+MODIFY core/__init__.py
+Add these to the existing imports and __all__
+"""
+
 from .converter import ImageConverter
-from .format_settings import ConversionSettings, ImageFormat
+from .format_settings import (
+    ConversionSettings,
+    ImageFormat,
+    OutputLocationMode,
+    FilenameTemplate
+)
 from .output_preview_generator import OutputPreviewGenerator
 from .app_settings import SettingsKeys, AppSettingsController
 
-__all__ = ['ImageConverter', 'ConversionSettings', 'ImageFormat', 'OutputPreviewGenerator']
+__all__ = [
+    'ImageConverter',
+    'ConversionSettings',
+    'ImageFormat',
+    'OutputLocationMode',
+    'FilenameTemplate',
+    'OutputPreviewGenerator'
+]

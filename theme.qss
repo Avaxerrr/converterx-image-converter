@@ -707,6 +707,11 @@ QLabel.estimate-label {
     border-radius: 3px;
 }
 
+QGroupBox#FilenamePattern {
+    margin-bottom: 8px;   /* or padding-bottom: 16px if preferred */
+}
+
+
 /* ============================================
    SETTINGS PANEL - SCROLL AREA
    ============================================ */

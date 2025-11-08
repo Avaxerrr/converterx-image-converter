@@ -11,11 +11,12 @@ import subprocess
 import platform
 
 from core.app_settings import AppSettingsController
-from core.format_settings import ImageFormat
+from core.format_settings import ImageFormat, OutputLocationMode
 from models import ImageFile
 from ui.app_settings import AppSettingsDialog
 from ui.batch_window import BatchWindow
 from ui.log_window import LogWindow
+from utils.filename_utils import generate_output_path
 from utils.logger import logger
 from ui.file_list_widget import FileListWidget
 from ui.preview import PreviewWidget
@@ -25,6 +26,7 @@ from workers.batch_processor import BatchProcessor
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
 from workers.output_preview_worker import OutputPreviewWorker
+from utils.logger import logger
 
 
 class MainWindow(QMainWindow):
@@ -246,7 +248,7 @@ class MainWindow(QMainWindow):
             self.output_preview_debounce_timer.start(debounce)
 
     def _on_convert_selected(self):
-        """Convert currently selected file(s)."""
+        """Convert currently selected file(s) with new output location logic."""
         # Get all selected files
         selected_items = self.file_list.list_widget.selectedItems()
         selected_files = []
@@ -267,46 +269,77 @@ class MainWindow(QMainWindow):
         # BRANCH: Single file vs Multiple files
         if len(selected_files) == 1:
             # === SINGLE FILE CONVERSION ===
-            selected_file = selected_files[0]
-            logger.info(
-                f"Starting conversion: {selected_file.filename} → "
-                f"{self.current_settings.output_format.value} "
-                f"(Q{self.current_settings.quality}, "
-                f"Resize={self.current_settings.resize_mode.value})",
-                "MainWindow"
-            )
-
-            # Get output path
-            output_folder = self.settings_panel.get_output_folder()
-            output_filename = f"{selected_file.path.stem}{self.current_settings.file_extension}"
-            output_path = output_folder / output_filename
-
-            # Check if file exists
-            if output_path.exists():
-                reply = QMessageBox.question(
-                    self,
-                    "File Exists",
-                    f"{output_filename} already exists. Overwrite?",
-                    QMessageBox.Yes | QMessageBox.No
-                )
-                if reply == QMessageBox.No:
-                    return
-
-            # Disable convert button
-            self.settings_panel.set_convert_enabled(False)
-            self.status_bar.showMessage(f"Converting {selected_file.filename}...")
-            self.status_bar.setStyleSheet("background-color: #0e639c; color: white;")
-
-            # Create and start worker
-            worker = ConversionWorker(selected_file, output_path, self.current_settings)
-            worker.signals.success.connect(self._on_conversion_success)
-            worker.signals.error.connect(self._on_conversion_error)
-            worker.signals.finished.connect(self._on_conversion_finished)
-            self.threadpool.start(worker)
-
+            self._convert_single_file(selected_files[0])
         else:
             # === BATCH CONVERSION ===
             self._start_batch_conversion(selected_files)
+
+    def _convert_single_file(self, selected_file: ImageFile):
+        """
+        Convert a single file with new output location and filename logic.
+
+        Args:
+            selected_file: ImageFile to convert
+        """
+        logger.info(
+            f"Starting conversion: {selected_file.filename} → "
+            f"{self.current_settings.output_format.value} "
+            f"(Q{self.current_settings.quality}, "
+            f"Resize={self.current_settings.resize_mode.value})",
+            "MainWindow"
+        )
+
+        # Handle "Ask Every Time" mode
+        if self.current_settings.output_location_mode == OutputLocationMode.ASK_EVERY_TIME:
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                "Select Output Folder",
+                str(self.current_settings.custom_output_folder)
+            )
+            if not folder:
+                logger.info("User cancelled folder selection", "MainWindow")
+                return  # User cancelled
+
+            # Temporarily update settings with chosen folder
+            self.current_settings.custom_output_folder = Path(folder)
+            logger.info(f"User selected output folder: {folder}", "MainWindow")
+
+        # Generate output path using new utility
+        try:
+            output_path = generate_output_path(selected_file, self.current_settings)
+            logger.info(f"Output path: {output_path}", "MainWindow")
+        except Exception as e:
+            logger.error(f"Failed to generate output path: {e}", "MainWindow")
+            QMessageBox.critical(
+                self,
+                "Path Error",
+                f"Failed to determine output location:\n{e}"
+            )
+            return
+
+        # Check if file exists (only if auto-increment is OFF)
+        if not self.current_settings.auto_increment and output_path.exists():
+            reply = QMessageBox.question(
+                self,
+                "File Exists",
+                f"{output_path.name} already exists. Overwrite?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                logger.info("User cancelled overwrite", "MainWindow")
+                return
+
+        # Disable convert button
+        self.settings_panel.set_convert_enabled(False)
+        self.status_bar.showMessage(f"Converting {selected_file.filename}...")
+        self.status_bar.setStyleSheet("background-color: #0e639c; color: white;")
+
+        # Create and start worker
+        worker = ConversionWorker(selected_file, output_path, self.current_settings)
+        worker.signals.success.connect(self._on_conversion_success)
+        worker.signals.error.connect(self._on_conversion_error)
+        worker.signals.finished.connect(self._on_conversion_finished)
+        self.threadpool.start(worker)
 
     def _on_conversion_success(self, result: dict):
         """Handle successful conversion."""
@@ -637,12 +670,47 @@ class MainWindow(QMainWindow):
     # ==========================================
 
     def _start_batch_conversion(self, files: List[ImageFile]):
-        """Start batch conversion of multiple files."""
+        """Start batch conversion with new output location logic."""
         logger.info(f"Starting batch conversion of {len(files)} files", "MainWindow")
 
         # Snapshot current settings
         settings_snapshot = self.current_settings
-        output_folder = self.settings_panel.get_output_folder()
+
+        # Handle output location mode
+        if settings_snapshot.output_location_mode == OutputLocationMode.ASK_EVERY_TIME:
+            # Ask ONCE for the batch
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                "Select Output Folder for Batch",
+                str(settings_snapshot.custom_output_folder)
+            )
+            if not folder:
+                logger.info("User cancelled batch folder selection", "MainWindow")
+                return  # User cancelled
+
+            # Update settings with chosen folder
+            settings_snapshot.custom_output_folder = Path(folder)
+            logger.info(f"User selected batch output folder: {folder}", "MainWindow")
+
+        # Check for mixed sources warning (only if SAME_AS_SOURCE mode)
+        if settings_snapshot.output_location_mode == OutputLocationMode.SAME_AS_SOURCE:
+            # FIXED: Use f.path.parent instead of f.filename.parent
+            unique_folders = set(f.path.parent for f in files)
+            if len(unique_folders) > 1:
+                # Show warning
+                folder_list = "\n".join(f"• {folder}" for folder in sorted(unique_folders))
+                reply = QMessageBox.question(
+                    self,
+                    "Files from Multiple Folders",
+                    f"You are converting files from {len(unique_folders)} different folders.\n\n"
+                    f"Converted files will be saved to their source locations:\n\n"
+                    f"{folder_list}\n\n"
+                    f"Continue?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if reply == QMessageBox.No:
+                    logger.info("User cancelled batch due to mixed sources", "MainWindow")
+                    return
 
         # Get max workers from app settings
         max_workers = self.app_settings.get_max_concurrent_workers()
@@ -656,7 +724,7 @@ class MainWindow(QMainWindow):
             self.batch_window = BatchWindow(self)
             logger.debug("Batch window initialized", "MainWindow")
 
-        # FIXED: Always recreate batch processor with current settings
+        # Always recreate batch processor with current settings
         if self.batch_processor is not None:
             # Disconnect old signals if processor exists
             try:
@@ -673,8 +741,16 @@ class MainWindow(QMainWindow):
         self._connect_batch_signals()
         logger.debug(f"Batch processor created with max_concurrent={max_workers}", "MainWindow")
 
+        # Determine output folder display for batch window
+        if settings_snapshot.output_location_mode == OutputLocationMode.CUSTOM_FOLDER:
+            output_folder_display = settings_snapshot.custom_output_folder
+        elif settings_snapshot.output_location_mode == OutputLocationMode.SAME_AS_SOURCE:
+            output_folder_display = Path("(Same as source files)")
+        else:  # ASK_EVERY_TIME
+            output_folder_display = settings_snapshot.custom_output_folder
+
         # Set settings snapshot in batch window
-        self.batch_window.set_settings_snapshot(settings_snapshot, output_folder)
+        self.batch_window.set_settings_snapshot(settings_snapshot, output_folder_display)
 
         # Show batch window
         self.batch_window.show()
@@ -684,8 +760,8 @@ class MainWindow(QMainWindow):
         # Start batch in window (populates file list)
         self.batch_window.start_batch(files)
 
-        # Start batch processor
-        self.batch_processor.start_batch(files, settings_snapshot, output_folder)
+        # Start batch processor (it will use generate_output_path internally)
+        self.batch_processor.start_batch(files, settings_snapshot)
 
     def _connect_batch_signals(self):
         """Connect BatchProcessor signals to BatchWindow and MainWindow."""
@@ -716,10 +792,13 @@ class MainWindow(QMainWindow):
             "MainWindow"
         )
 
+        # Build status message
         if failed == 0:
-            self.status_bar.showMessage(f"Batch complete: All {successful} files converted successfully!", 5000)
+            status_msg = f"Batch complete: All {successful} files converted successfully!"
         else:
-            self.status_bar.showMessage(f"Batch complete: {successful} successful, {failed} failed", 5000)
+            status_msg = f"Batch complete: {successful} successful, {failed} failed"
+
+        self.status_bar.showMessage(status_msg, 5000)
 
     def _setup_batch_window_shortcut(self):
         """Setup Ctrl+B shortcut to toggle batch window."""

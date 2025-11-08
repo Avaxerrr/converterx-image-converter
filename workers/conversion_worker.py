@@ -72,6 +72,16 @@ class ConversionWorker(QRunnable):
             else:
                 self.signals.error.emit(f"{self.image_file.filename}: {message}")
 
+        except PermissionError as e:
+            error_msg = f"Permission denied: Cannot write to {self.output_path.parent}"
+            logger.error(f"{error_msg}: {e}", "ConversionWorker")
+            self.signals.error.emit(error_msg)
+
+        except OSError as e:
+            error_msg = f"OS error: {e}"
+            logger.error(f"{error_msg}", "ConversionWorker")
+            self.signals.error.emit(error_msg)
+
         except Exception as e:
             # LOG: Unexpected exception in worker thread (critical bug indicator)
             logger.error(

@@ -11,6 +11,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 
 from models.image_file import ImageFile
+from utils.filename_utils import generate_output_path
 from workers.conversion_worker import ConversionWorker
 from core.format_settings import ConversionSettings
 from utils.logger import logger
@@ -61,7 +62,6 @@ class BatchProcessor(QObject):
 
         # Settings snapshot
         self.settings_snapshot: Optional[ConversionSettings] = None
-        self.output_folder: Optional[Path] = None
 
         # Control flags
         self.cancel_requested = False
@@ -78,16 +78,15 @@ class BatchProcessor(QObject):
     def start_batch(
             self,
             files: List[ImageFile],
-            settings: ConversionSettings,
-            output_folder: Path
+            settings: ConversionSettings
+            # REMOVED: output_folder parameter - it's now in settings.custom_output_folder
     ):
         """
         Start batch conversion of multiple files.
 
         Args:
             files: List of ImageFile objects to convert
-            settings: ConversionSettings snapshot (captured at batch start)
-            output_folder: Output directory for converted files
+            settings: ConversionSettings snapshot (includes output location mode and folder)
         """
         if self.is_batch_running:
             logger.warning("Batch already running. Ignoring new batch request.", "BatchProcessor")
@@ -101,7 +100,6 @@ class BatchProcessor(QObject):
 
         # Capture snapshot
         self.settings_snapshot = settings
-        self.output_folder = output_folder
 
         # Control flags
         self.cancel_requested = False
@@ -112,7 +110,11 @@ class BatchProcessor(QObject):
         self.current_index = 0
 
         logger.info(f"Starting batch conversion of {self.total_files} files", "BatchProcessor")
-        logger.debug(f"Settings: {settings.output_format.value}, Quality {settings.quality}", "BatchProcessor")
+        logger.debug(
+            f"Settings: {settings.output_format.value}, Quality {settings.quality}, "
+            f"Output mode: {settings.output_location_mode.value}",  # NEW: Log output mode
+            "BatchProcessor"
+        )
 
         # Start initial workers (up to max_concurrent)
         self._start_initial_workers()
@@ -166,16 +168,21 @@ class BatchProcessor(QObject):
             return
 
         # Check concurrent limit
-        if len(self.active_workers) >= self.max_concurrent:  # FIXED: Changed to self.max_concurrent
+        if len(self.active_workers) >= self.max_concurrent:
             return
 
         # Get next file
         image_file = self.file_queue.pop(0)
         self.current_index += 1
-
-        # Create output path
-        output_filename = f"{image_file.path.stem}.{self.settings_snapshot.output_format.value.lower()}"
-        output_path = self.output_folder / output_filename
+        try:
+            output_path = generate_output_path(image_file, self.settings_snapshot)
+            logger.debug(f"Generated output path: {output_path}", "BatchProcessor")
+        except Exception as e:
+            # If path generation fails, mark as error and continue
+            logger.error(f"Failed to generate output path for {image_file.filename}: {e}", "BatchProcessor")
+            self._on_worker_error(image_file, f"Path generation failed: {e}")
+            return
+        # ================================================================
 
         # Create worker
         worker = ConversionWorker(
@@ -195,7 +202,7 @@ class BatchProcessor(QObject):
         # Emit started signal
         self.file_started.emit(image_file, self.current_index, self.total_files)
 
-        # NEW: Enhanced logging with worker count
+        # Enhanced logging with worker count
         logger.info(
             f"[{self.current_index}/{self.total_files}] Starting: {image_file.filename} "
             f"(Active workers: {len(self.active_workers)}/{self.max_concurrent})",
