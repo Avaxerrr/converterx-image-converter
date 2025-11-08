@@ -3,7 +3,7 @@ Output settings widget for image conversion.
 
 Handles format selection, quality/target size modes, output folder, and filename templates.
 """
-
+from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QSlider, QCheckBox, QRadioButton, QLineEdit, QSpinBox,
@@ -22,6 +22,7 @@ class OutputSettingsWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._original_size_bytes: int | None = None
         self.output_folder = Path(Path.home() / "Downloads" / "Converted")
         self._setup_ui()
 
@@ -126,7 +127,8 @@ class OutputSettingsWidget(QWidget):
         layout.addWidget(self.metadata_check)
 
         # Estimated File Size Display
-        self.estimated_size_label = QLabel("Estimated Size: —")
+        self.estimated_size_label = QLabel("Est. Size: -- | Orig. Size: --")
+        self.estimated_size_label.setAlignment(QtCore.Qt.AlignCenter)
         self.estimated_size_label.setObjectName("estimated-size-label")
         layout.addWidget(self.estimated_size_label)
 
@@ -343,6 +345,9 @@ class OutputSettingsWidget(QWidget):
         """Get currently selected format."""
         return self.format_combo.currentData()
 
+    def update_original_size(self, original_bytes: int | None):
+        self._original_size_bytes = original_bytes if original_bytes and original_bytes > 0 else None
+
     def update_estimated_size(self, size_bytes: int):
         """
         Update the estimated file size display.
@@ -351,18 +356,23 @@ class OutputSettingsWidget(QWidget):
             size_bytes: Estimated file size in bytes (0 to hide)
         """
         if size_bytes > 0:
-            if size_bytes >= 1024 * 1024:  # >= 1 MB
-                size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
-            else:  # < 1 MB
-                size_str = f"{size_bytes / 1024:.1f} KB"
-
-            self.estimated_size_label.setText(f"Estimated Size: {size_str}")
+            parts = []
+            # Order and wording exactly as requested
+            parts.append(f"Est. size: {self._format_size(size_bytes)}")
+            if self._original_size_bytes is not None:
+                parts.append(f"Orig. size: {self._format_size(self._original_size_bytes)}")
+            self.estimated_size_label.setText(" | ".join(parts))
             self.estimated_size_label.show()
         else:
-            self.estimated_size_label.setText("Estimated Size: —")
+            self.estimated_size_label.setText("Est. Size: —")
             self.estimated_size_label.hide()
 
     def _on_enable_suffix_toggled(self):
         enabled = self.enable_suffix_check.isChecked()
         self.filename_template_combo.setEnabled(enabled)
         self.custom_suffix_container.setEnabled(enabled)
+
+    def _format_size(self, size_bytes: int) -> str:
+        if size_bytes >= 1024 * 1024:
+            return f"{size_bytes / (1024 * 1024):.2f} MB"
+        return f"{size_bytes / 1024:.1f} KB"

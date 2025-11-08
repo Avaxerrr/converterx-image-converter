@@ -546,8 +546,13 @@ class MainWindow(QMainWindow):
                 f"Output preview CACHE HIT: {selected_file.filename}",
                 source="MainWindow"
             )
-            cached_pixmap, cached_file_size = self.output_preview_cache[cache_key]  # Unpack tuple
+            cached_pixmap, cached_file_size = self.output_preview_cache[cache_key]
             self.preview.display_output_preview(cached_pixmap)
+
+            selected_file = self.file_list.get_selected_file()
+            if selected_file:
+                self.settings_panel.output_widget.update_original_size(selected_file.size_bytes)
+
             self.settings_panel.output_widget.update_estimated_size(cached_file_size)  # Update UI
             self.status_bar.showMessage(
                 f"✓ Output preview ready (cached) for {selected_file.filename}",
@@ -608,6 +613,10 @@ class MainWindow(QMainWindow):
 
         self.preview.hide_loading_overlay()
         self.preview.display_output_preview(pixmap)
+
+        selected_file = self.file_list.get_selected_file()
+        if selected_file:
+            self.settings_panel.output_widget.update_original_size(selected_file.size_bytes)
 
         # Update estimated file size in settings panel
         self.settings_panel.output_widget.update_estimated_size(file_size_bytes)

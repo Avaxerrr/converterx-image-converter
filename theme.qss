@@ -712,7 +712,7 @@ SettingsPanel #reset-button:pressed {
 QLabel#estimated-size-label,
 QLabel.estimate-label {
     color: #4ec9b0;
-    font-size: 9pt;
+    font-size: 8pt;
     font-weight: 600;
     padding: 4px 8px;
     background-color: rgba(78, 201, 176, 0.1);
