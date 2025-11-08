@@ -130,8 +130,9 @@ class OutputSettingsWidget(QWidget):
         self.estimated_size_label.setObjectName("estimated-size-label")
         layout.addWidget(self.estimated_size_label)
 
-        # ========== NEW: OUTPUT LOCATION SECTION ==========
+        # ========== OUTPUT LOCATION SECTION ==========
         location_group = QGroupBox("Output Location")
+        location_group.setObjectName("OutputLocation")
         location_layout = QVBoxLayout(location_group)
         location_layout.setSpacing(6)
 
@@ -143,7 +144,7 @@ class OutputSettingsWidget(QWidget):
 
         # Custom folder path + browse button
         folder_layout = QHBoxLayout()
-        folder_layout.setContentsMargins(20, 0, 0, 0)  # Indent
+        folder_layout.setContentsMargins(20, 0, 0, 0)
         self.output_folder_edit = QLineEdit()
         self.output_folder_edit.setText(str(self.output_folder))
         self.output_folder_edit.setReadOnly(True)
@@ -167,7 +168,7 @@ class OutputSettingsWidget(QWidget):
 
         layout.addWidget(location_group)
 
-        # ========== NEW: FILENAME PATTERN SECTION ==========
+        # ========== FILENAME PATTERN SECTION ==========
         filename_group = QGroupBox("Filename Pattern")
         filename_group.setObjectName("FilenamePattern")
         filename_layout = QVBoxLayout(filename_group)
@@ -180,11 +181,25 @@ class OutputSettingsWidget(QWidget):
         self.filename_template_combo.addItem("_converted", FilenameTemplate.CONVERTED)
         self.filename_template_combo.addItem("_[format]", FilenameTemplate.FORMAT)
         self.filename_template_combo.addItem("_Q[quality]", FilenameTemplate.QUALITY)
-        self.filename_template_combo.addItem("Custom...", "custom")
-        self.filename_template_combo.currentIndexChanged.connect(lambda: self.settings_changed.emit())
+        self.filename_template_combo.addItem("Custom...", FilenameTemplate.CUSTOM)  # Changed to use enum
+        self.filename_template_combo.currentIndexChanged.connect(self._on_template_changed)
 
         template_layout.addWidget(self.filename_template_combo, 1)
         filename_layout.addLayout(template_layout)
+
+        # Custom suffix input field (hidden by default)
+        self.custom_suffix_container = QWidget()
+        custom_suffix_layout = QHBoxLayout(self.custom_suffix_container)
+        custom_suffix_layout.setContentsMargins(0, 0, 0, 0)
+        custom_suffix_layout.setSpacing(6)
+        custom_suffix_layout.addWidget(QLabel("Custom:"))
+        self.custom_suffix_input = QLineEdit()
+        self.custom_suffix_input.setPlaceholderText("e.g., _optimized or _final")
+        self.custom_suffix_input.setToolTip("Enter custom suffix (underscore is optional)")
+        self.custom_suffix_input.textChanged.connect(lambda: self.settings_changed.emit())
+        custom_suffix_layout.addWidget(self.custom_suffix_input, 1)
+        filename_layout.addWidget(self.custom_suffix_container)
+        self.custom_suffix_container.hide()  # Hidden by default
 
         # Auto-increment checkbox
         self.auto_increment_check = QCheckBox("Auto-increment if file exists")
@@ -250,6 +265,18 @@ class OutputSettingsWidget(QWidget):
         self.output_folder_browse_btn.setEnabled(is_custom_mode)
         self.settings_changed.emit()
 
+    def _on_template_changed(self):
+        """Handle template dropdown change - show/hide custom input."""
+        current_template = self.filename_template_combo.currentData()
+
+        # Show custom input only when CUSTOM is selected
+        if current_template == FilenameTemplate.CUSTOM:
+            self.custom_suffix_container.show()
+        else:
+            self.custom_suffix_container.hide()
+
+        self.settings_changed.emit()
+
     def browse_output_folder(self):
         """Open folder browser dialog."""
         folder = QFileDialog.getExistingDirectory(
@@ -271,10 +298,11 @@ class OutputSettingsWidget(QWidget):
             'keep_metadata': self.metadata_check.isChecked(),
             'png_compress_level': self.png_level_spin.value(),
             'target_size_kb': None,
-            # NEW FIELDS
+            # FIELDS
             'output_location_mode': self._get_output_mode(),
             'custom_output_folder': self.output_folder,
             'filename_template': self.filename_template_combo.currentData(),
+            'custom_suffix': self.custom_suffix_input.text().strip(),
             'auto_increment': self.auto_increment_check.isChecked()
         }
 

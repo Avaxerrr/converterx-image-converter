@@ -174,6 +174,7 @@ class SettingsPanel(QWidget):
             output_location_mode=output_settings['output_location_mode'],
             custom_output_folder=output_settings['custom_output_folder'],
             filename_template=output_settings['filename_template'],
+            custom_suffix=output_settings['custom_suffix'],
             auto_increment=output_settings['auto_increment']
         )
 

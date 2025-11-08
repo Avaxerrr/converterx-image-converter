@@ -30,8 +30,9 @@ class FilenameTemplate(Enum):
     CONVERTED = "_converted"
     FORMAT = "_{format}"
     QUALITY = "_Q{quality}"
+    CUSTOM = "custom"  # Indicates user will provide custom suffix
 
-    def apply(self, original_stem: str, format_name: str, quality: int) -> str:
+    def apply(self, original_stem: str, format_name: str, quality: int, custom_suffix: str = "") -> str:
         """
         Apply template to generate new filename stem.
 
@@ -39,6 +40,7 @@ class FilenameTemplate(Enum):
             original_stem: Original filename without extension
             format_name: Output format name (e.g., "WebP", "AVIF")
             quality: Quality setting (0-100)
+            custom_suffix: Custom suffix string (only used when CUSTOM template)
 
         Returns:
             New filename stem with suffix applied
@@ -49,6 +51,14 @@ class FilenameTemplate(Enum):
             return f"{original_stem}_{format_name}"
         elif self == FilenameTemplate.QUALITY:
             return f"{original_stem}_Q{quality}"
+        elif self == FilenameTemplate.CUSTOM:
+            # Apply custom suffix if provided, otherwise no suffix
+            if custom_suffix:
+                # Ensure suffix starts with underscore if not empty
+                if not custom_suffix.startswith("_"):
+                    custom_suffix = f"_{custom_suffix}"
+                return f"{original_stem}{custom_suffix}"
+            return original_stem
         return original_stem
 
 
@@ -75,6 +85,7 @@ class ConversionSettings:
     output_location_mode: OutputLocationMode = OutputLocationMode.CUSTOM_FOLDER
     custom_output_folder: Path = Path.home() / "Downloads" / "Converted"
     filename_template: FilenameTemplate = FilenameTemplate.CONVERTED
+    custom_suffix: str = ""  # Custom suffix for CUSTOM template
     auto_increment: bool = True
 
     def to_pillow_kwargs(self, quality_override: Optional[int] = None) -> Dict[str, Any]:

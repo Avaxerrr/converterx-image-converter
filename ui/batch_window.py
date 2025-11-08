@@ -18,6 +18,7 @@ from datetime import datetime
 
 from models.image_file import ImageFile
 from core.format_settings import ConversionSettings
+from utils.filename_utils import generate_output_path
 from utils.logger import logger
 
 
@@ -230,6 +231,8 @@ class BatchWindow(QDialog):
         # Store for later use
         self.output_folder_path = output_folder
 
+        self.settings_snapshot = settings
+
         # Format settings text
         format_str = settings.output_format.value
 
@@ -285,8 +288,17 @@ class BatchWindow(QDialog):
             self.file_table.setItem(row, 0, status_item)
 
             # File name
-            name_item = QTableWidgetItem(image_file.filename)
+            display_name = self._compute_output_display_name(image_file)
+            name_item = QTableWidgetItem(display_name)
             self.file_table.setItem(row, 1, name_item)
+
+            # tooltip with full output path for this file
+            try:
+                out_path = generate_output_path(image_file, self.settings_snapshot)
+                name_item.setToolTip(str(out_path))
+            except Exception:
+                # silently ignore tooltip if error occurs
+                pass
 
             # Progress bar
             progress_bar = QProgressBar()
@@ -730,3 +742,13 @@ class BatchWindow(QDialog):
             self.pause_btn.setText("Pause")
             self._update_status_summary()  # Restore normal status
             logger.debug("Resume requested by user", "BatchWindow")
+
+    def _compute_output_display_name(self, image_file):
+        """Compute the final output filename from settings."""
+        try:
+            if hasattr(self, 'settings_snapshot') and self.settings_snapshot:
+                out_path = generate_output_path(image_file, self.settings_snapshot)
+                return out_path.name
+        except Exception as e:
+            logger.warning(f"[BatchWindow] Unable to compute display filename: {e}")
+        return image_file.filename

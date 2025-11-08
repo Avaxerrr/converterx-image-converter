@@ -85,7 +85,9 @@ def apply_suffix(
     format_name = settings.output_format.name  # "WEBP", "AVIF", etc.
     quality = settings.quality
 
-    return template.apply(original_stem, format_name, quality)
+    # Pass custom_suffix to apply method
+    return template.apply(original_stem, format_name, quality, settings.custom_suffix)
+
 
 
 def get_next_available_path(base_path: Path) -> Path:

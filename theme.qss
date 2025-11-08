@@ -708,7 +708,7 @@ QLabel.estimate-label {
 }
 
 QGroupBox#FilenamePattern {
-    margin-bottom: 8px;   /* or padding-bottom: 16px if preferred */
+    margin-bottom: 8px;
 }
 
 
