@@ -1422,3 +1422,35 @@ BatchWindow QToolTip {
     border-radius: 3px;
     font-size: 9pt;
 }
+
+/* ============================================
+   APP SETTINGS
+   ============================================ */
+
+/* App Settings Sidebar - Larger Items */
+QListWidget#settingsSidebar {
+    background-color: #1e1e1e;
+    border: none;
+    border-right: 1px solid #3e3e42;
+    border-bottom: 1px solid #3e3e42;
+    border-radius: 3px;
+}
+
+QListWidget#settingsSidebar::item {
+    padding: 12px;  /* Increased from default */
+    color: #cccccc;
+    border: none;
+}
+
+QListWidget#settingsSidebar::item:hover {
+    background-color: #333638;
+}
+
+QListWidget#settingsSidebar::item:selected {
+    background-color: #0e639c;
+    color: #ffffff;
+}
+
+QListWidget#settingsSidebar::item:selected:hover {
+    background-color: #1177bb;
+}

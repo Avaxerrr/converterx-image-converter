@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QStackedWidget, QPushButton, QMessageBox, QScrollArea
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QShortcut, QIcon
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -73,6 +73,8 @@ class AppSettingsDialog(QDialog):
         self.sidebar.setFixedWidth(200)
         self.sidebar.setObjectName("settingsSidebar")
         self.sidebar.currentRowChanged.connect(self._on_page_changed)
+        self.sidebar.setFocusPolicy(Qt.NoFocus)
+        self.sidebar.setAttribute(Qt.WA_MacShowFocusRect, False)
 
         # Wrap content in scroll area
         scroll_area = QScrollArea()
@@ -129,31 +131,45 @@ class AppSettingsDialog(QDialog):
         main_layout.addLayout(button_layout)
 
     def _create_pages(self) -> None:
-        """
-        Create settings pages and add to sidebar/stack.
-
-        Imports pages here to avoid circular import issues.
-        """
-        # Import here to avoid circular imports
+        """Create settings pages and add to sidebar/stack."""
         from .performance_page import PerformanceSettingsPage
         from .preview_page import PreviewSettingsPage
         from .defaults_page import DefaultSettingsPage
+        from PySide6.QtWidgets import QScrollArea, QListWidgetItem
+        from PySide6.QtGui import QIcon
 
-        # Create pages (inject controller into each)
+        # Create pages and STORE REFERENCES
         self.performance_page = PerformanceSettingsPage(self.controller)
         self.preview_page = PreviewSettingsPage(self.controller)
         self.defaults_page = DefaultSettingsPage(self.controller)
 
+        # Helper function to wrap page in scroll area
+        def create_scrollable_page(page_widget):
+            """Wrap a page widget in a scroll area."""
+            scroll = QScrollArea()
+            scroll.setWidget(page_widget)
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            scroll.setFrameShape(QScrollArea.NoFrame)
+            return scroll
+
+        # Wrap each page individually
+        performance_scroll = create_scrollable_page(self.performance_page)
+        preview_scroll = create_scrollable_page(self.preview_page)
+        defaults_scroll = create_scrollable_page(self.defaults_page)
+
         # Define pages with icons and titles
         pages = [
-            ("🚀 Performance", self.performance_page),
-            ("🖼️ Preview", self.preview_page),
-            ("⚙️ Defaults", self.defaults_page)
+            ("Performance", performance_scroll, "icons/performance-settings.svg"),
+            ("Preview", preview_scroll, "icons/preview-settings.svg"),
+            ("Defaults", defaults_scroll, "icons/default-settings.svg")
         ]
 
         # Add to UI
-        for title, page_widget in pages:
-            self.sidebar.addItem(title)
+        for title, page_widget, icon_path in pages:
+            item = QListWidgetItem(QIcon(icon_path), title)
+            self.sidebar.addItem(item)
             self.content_stack.addWidget(page_widget)
 
         # Select first page

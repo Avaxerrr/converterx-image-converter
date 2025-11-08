@@ -108,14 +108,9 @@ class PerformanceSettingsPage(QWidget):
         threads_help.setStyleSheet("color: #858585; font-size: 11px;")
         threads_help.setWordWrap(True)
 
-        # Warning label
-        threads_warning = QLabel("⚠️ Requires app restart to take effect")
-        threads_warning.setStyleSheet("color: #ff9800; font-size: 11px; font-weight: 500;")
-
         threads_layout.addWidget(threads_label)
         threads_layout.addWidget(self.threads_spinbox)
         threads_layout.addWidget(threads_help)
-        threads_layout.addWidget(threads_warning)
         threads_group.setLayout(threads_layout)
         layout.addWidget(threads_group)
 

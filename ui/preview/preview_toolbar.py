@@ -15,7 +15,7 @@ class PreviewToolbar(QWidget):
 
     # Signals for button actions
     preview_mode_changed = Signal(PreviewMode)
-    output_preview_toggled = Signal(bool)  # NEW: Signal for output preview button
+    output_preview_toggled = Signal(bool)  # Signal for output preview button
     rotate_left_clicked = Signal()
     rotate_right_clicked = Signal()
     fit_to_window_clicked = Signal()
@@ -44,7 +44,7 @@ class PreviewToolbar(QWidget):
         # === HD/Preview Toggle Button (LEFT SIDE) ===
         self.hd_toggle_btn = QToolButton()
         self.hd_toggle_btn.setObjectName("hdToggleButton")  # Special objectName for styling
-        self.hd_toggle_btn.setToolTip("Toggle HD Mode (Full Resolution)")
+        self.hd_toggle_btn.setToolTip("Show the full resolution of the image")
         self.hd_toggle_btn.setFixedSize(button_size)
         self.hd_toggle_btn.clicked.connect(self._toggle_preview_mode)
         self.hd_toggle_btn.setEnabled(False)
@@ -62,14 +62,14 @@ class PreviewToolbar(QWidget):
 
         toolbar_layout.addWidget(self.hd_toggle_btn)
 
-        # === OUTPUT PREVIEW Toggle Button (NEW - Between HD and Rotate) ===
+        # === OUTPUT PREVIEW Toggle Button ===
         self.output_preview_btn = QToolButton()
         self.output_preview_btn.setObjectName("outputPreviewButton")
         # More detailed tooltip
         self.output_preview_btn.setToolTip(
-            "Toggle Output Preview (Show settings applied)\n\n"
+            "Toggle Output Preview (Show the final look of the image with settings applied)\n\n"
             "Applied: Quality, Scale %, PNG compression, Lossless\n"
-            "Excluded: Target file size, Max dimensions, Advanced options"
+            "Excluded: Target file size, Advanced options"
         )
         self.output_preview_btn.setFixedSize(button_size)
         self.output_preview_btn.clicked.connect(self._on_output_preview_clicked)

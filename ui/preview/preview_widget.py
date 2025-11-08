@@ -432,7 +432,7 @@ class PreviewWidget(QWidget):
             # Enable/disable HD toggle based on image size
             if hd_available:
                 self.toolbar.hd_toggle_btn.setEnabled(True)
-                self.toolbar.hd_toggle_btn.setToolTip("Toggle HD Mode (Full Resolution)")
+                self.toolbar.hd_toggle_btn.setToolTip("Toggle Full Res Mode (Full Resolution)")
                 logger.debug(
                     f"HD mode available for {image_file.filename} "
                     f"({image_file.width}×{image_file.height})",
