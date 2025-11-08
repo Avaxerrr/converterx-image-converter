@@ -82,7 +82,6 @@ class SettingsPanel(QWidget):
         self.app_settings_btn.setObjectName("app-settings-button")
         self.app_settings_btn.setIcon(QIcon("icons/settings.svg"))
         self.app_settings_btn.setToolTip("App Settings")
-        self.app_settings_btn.setFixedSize(36, 36)  # Square icon button
         self.app_settings_btn.clicked.connect(self.app_settings_requested.emit)
 
         button_layout.addWidget(self.convert_btn, 1)  # Convert takes most space

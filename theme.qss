@@ -601,7 +601,7 @@ PreviewWidget #toolButton:disabled {
 /* ============================================
    SETTINGS PANEL STYLES
    ============================================ */
-SettingsPanel #convert-button {
+SettingsPanel #convert-button, #app-settings-button {
     min-height: 32px;
     font-size: 10pt;
     font-weight: 600;

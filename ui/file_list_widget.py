@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal, Qt, QSize, QThreadPool
 from PySide6.QtGui import QIcon, QPixmap, QAction
-from typing import List
+from typing import List, Dict
 from pathlib import Path
 import subprocess
 import platform
@@ -19,11 +19,14 @@ class FileListWidget(QWidget):
     # Signals
     file_selected = Signal(ImageFile)
     files_dropped = Signal(list)  # Emits List[Path]
+    files_removed = Signal()  # Signal when files are removed
+    files_dropped = Signal(list)  # Emits List[Path]
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.image_files: List[ImageFile] = []
         self.threadpool = QThreadPool()  # For async thumbnail generation
+        self.thumbnail_cache: Dict[Path, QPixmap] = {}  # Cache thumbnails by file path
         self._setup_ui()
 
         # Enable drag and drop
@@ -174,10 +177,15 @@ class FileListWidget(QWidget):
                 item.setText(item_text)
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-                self.list_widget.addItem(item)
+                # Check if thumbnail is already cached
+                if img_file.path in self.thumbnail_cache:
+                    # Reuse cached thumbnail - instant!
+                    item.setIcon(QIcon(self.thumbnail_cache[img_file.path]))
+                else:
+                    # Generate thumbnail asynchronously only if not cached
+                    self._generate_thumbnail_async(img_file.path, row_index)
 
-                # Generate thumbnail asynchronously
-                self._generate_thumbnail_async(img_file.path, row_index)
+                self.list_widget.addItem(item)
 
         self._update_status()
         self._update_empty_state()
@@ -193,7 +201,12 @@ class FileListWidget(QWidget):
         """Handle thumbnail generation completion."""
         if 0 <= row_index < self.list_widget.count():
             item = self.list_widget.item(row_index)
-            if item:
+            if item and row_index < len(self.image_files):
+                # Cache the thumbnail for future reuse
+                image_path = self.image_files[row_index].path
+                self.thumbnail_cache[image_path] = thumbnail
+
+                # Set the icon
                 item.setIcon(QIcon(thumbnail))
 
     def _on_thumbnail_error(self, row_index: int, error_msg: str):
@@ -204,6 +217,7 @@ class FileListWidget(QWidget):
         """Clear all files from the list."""
         self.image_files.clear()
         self.list_widget.clear()
+        self.thumbnail_cache.clear()
         self._update_status()
         self._update_empty_state()
 
@@ -246,6 +260,10 @@ class FileListWidget(QWidget):
         # Create context menu
         menu = QMenu(self)
 
+        # Get count of selected items
+        selected_items = self.list_widget.selectedItems()
+        selected_count = len(selected_items)
+
         # Add "Open Folder Location" action
         open_folder_action = QAction("Open Folder Location", self)
         open_folder_action.triggered.connect(lambda: self._open_folder_location(image_file))
@@ -256,8 +274,62 @@ class FileListWidget(QWidget):
         edit_action.triggered.connect(lambda: self._edit_image(image_file))
         menu.addAction(edit_action)
 
+        # Add separator
+        menu.addSeparator()
+
+        # Add "Remove" action with dynamic text
+        if selected_count > 1:
+            remove_action = QAction(f"Remove {selected_count} Images", self)
+            remove_action.triggered.connect(self._remove_selected_files)
+        else:
+            remove_action = QAction("Remove Image", self)
+            remove_action.triggered.connect(lambda: self._remove_single_file(row))
+
+        menu.addAction(remove_action)
+
         # Show menu at cursor position
         menu.exec(self.list_widget.mapToGlobal(position))
+
+    def _remove_single_file(self, row: int):
+        """Remove a single file from the list."""
+        if 0 <= row < len(self.image_files):
+            removed_file = self.image_files.pop(row)
+            self.list_widget.takeItem(row)
+            self._update_status()
+            self._update_empty_state()
+            print(f"Removed: {removed_file.filename}")
+
+    def _remove_selected_files(self):
+        """Remove all selected files from the list (instant removal like clear_files)."""
+        selected_items = self.list_widget.selectedItems()
+        if not selected_items:
+            return
+
+        # Get indices of selected items
+        selected_indices = set(self.list_widget.row(item) for item in selected_items)
+        removed_count = len(selected_indices)
+
+        # Create new lists excluding selected items (same strategy as clear_files)
+        new_image_files = [
+            img for idx, img in enumerate(self.image_files)
+            if idx not in selected_indices
+        ]
+
+        # Rebuild the list widget from scratch (same as clear_files)
+        self.list_widget.clear()
+        self.image_files.clear()
+
+        # Emit signal to notify that files were removed
+        self.files_removed.emit()
+
+        # Re-add remaining items
+        if new_image_files:
+            self.add_files(new_image_files)
+        else:
+            self._update_status()
+            self._update_empty_state()
+
+        print(f"Removed {removed_count} file(s)")
 
     def _open_folder_location(self, image_file: ImageFile):
         """Open the folder containing the image file."""

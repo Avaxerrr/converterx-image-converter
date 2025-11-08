@@ -135,6 +135,7 @@ class MainWindow(QMainWindow):
         self.file_list.file_selected.connect(self._on_file_selected)
         self.file_list.list_widget.itemSelectionChanged.connect(self._on_selection_changed)
         self.file_list.files_dropped.connect(self._on_files_dropped)
+        self.file_list.files_removed.connect(self._on_files_removed)
 
         # Settings signals
         self.settings_panel.settings_changed.connect(self._on_settings_changed)
@@ -780,3 +781,10 @@ class MainWindow(QMainWindow):
             )
         else:
             logger.debug(f"Thread pool size unchanged ({thread_count} threads)", source="MainWindow")
+
+    def _on_files_removed(self):
+        """Handle files being removed from the list."""
+        # Clear preview to avoid ghosting effect
+        self.preview.clear_preview()
+        self.settings_panel.set_convert_enabled(False)
+        logger.debug("Files removed - preview cleared", source="MainWindow")
