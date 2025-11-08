@@ -4,7 +4,7 @@ Main settings panel coordinator.
 Composes output, resize, and advanced settings widgets into collapsible sections.
 Aggregates settings from all child components and provides a unified interface.
 """
-from PySide6.QtGui import Qt
+from PySide6.QtGui import Qt, QIcon
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QPushButton, QHBoxLayout, QGroupBox, \
     QFileDialog
 from PySide6.QtCore import Signal
@@ -23,7 +23,8 @@ class SettingsPanel(QWidget):
     """Main settings panel that coordinates all settings components."""
 
     settings_changed = Signal(ConversionSettings)
-    convert_requested = Signal()  # ← ADDED: Missing signal
+    convert_requested = Signal()
+    app_settings_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -51,51 +52,75 @@ class SettingsPanel(QWidget):
         container_layout = QVBoxLayout(container)
         container_layout.setContentsMargins(8, 12, 12, 8)
         container_layout.setSpacing(6)
-
         container.setMinimumWidth(200)
 
-        # ← ADDED: Header with title
+        # Header with title
         header_layout = QHBoxLayout()
         header_layout.setSpacing(8)
+
         title_label = QLabel("Settings")
         title_label.setObjectName("panelHeader")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
+
         container_layout.addLayout(header_layout)
 
-        # ← ADDED: Convert button
+        # ============================================================
+        # MODIFIED: Convert Button + App Settings Button
+        # ============================================================
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(6)
+
+        # Convert button
         self.convert_btn = QPushButton("Convert Selected")
         self.convert_btn.setObjectName("convert-button")
         self.convert_btn.clicked.connect(self.convert_requested.emit)
         self.convert_btn.setEnabled(False)
-        container_layout.addWidget(self.convert_btn)
 
-        # === Output Settings Section ===
+        # App Settings button (icon only)
+        self.app_settings_btn = QPushButton()
+        self.app_settings_btn.setObjectName("app-settings-button")
+        self.app_settings_btn.setIcon(QIcon("icons/settings.svg"))
+        self.app_settings_btn.setToolTip("App Settings")
+        self.app_settings_btn.setFixedSize(36, 36)  # Square icon button
+        self.app_settings_btn.clicked.connect(self.app_settings_requested.emit)
+
+        button_layout.addWidget(self.convert_btn, 1)  # Convert takes most space
+        button_layout.addWidget(self.app_settings_btn)  # Icon button on the right
+
+        container_layout.addLayout(button_layout)
+
+        # ============================================================
+        # Rest of the UI (Output Settings, Resize, Advanced, Output Folder)
+        # ============================================================
+
+        # Output Settings Section
         self.output_widget = OutputSettingsWidget()
         output_section = CollapsibleSection("Output Settings", content_spacing=6)
         output_section.set_content_layout(self.output_widget.layout())
-        output_section.toggle_button.setChecked(True)  # ← Start expanded
-        output_section._on_toggle()  # ← Apply expansion
+        output_section.toggle_button.setChecked(True)  # Start expanded
+        output_section._on_toggle()  # Apply expansion (this is OK - internal method)
         container_layout.addWidget(output_section)
 
-        # === Resize Settings Section ===
+        # Resize Settings Section
         self.resize_widget = ResizeSettingsWidget()
         resize_section = CollapsibleSection("Resize Options", content_spacing=4)
         resize_section.set_content_layout(self.resize_widget.layout())
         container_layout.addWidget(resize_section)
 
-        # === Advanced Settings Section ===
+        # Advanced Settings Section
         self.advanced_widget = AdvancedSettingsWidget()
         self.advanced_section = CollapsibleSection("Advanced Options", content_spacing=4)
         self.advanced_section.set_content_layout(self.advanced_widget.layout())
         container_layout.addWidget(self.advanced_section)
 
-        # === Output Folder (OUTSIDE collapsible sections) ===
+        # Output Folder (OUTSIDE collapsible sections)
         folder_group = QGroupBox("Output Folder")
         folder_layout = QVBoxLayout(folder_group)
         folder_layout.setSpacing(6)
 
         folder_select_layout = QHBoxLayout()
+
         self.folder_label = QLabel(str(self.output_widget.output_folder))
         self.folder_label.setObjectName("folder-label")
         self.folder_label.setTextFormat(Qt.PlainText)
@@ -104,20 +129,20 @@ class SettingsPanel(QWidget):
 
         browse_btn = QPushButton("Browse...")
         browse_btn.setObjectName("browse-button")
-        browse_btn.clicked.connect(self._browse_output_folder)
+        browse_btn.clicked.connect(self.browse_output_folder)  # FIXED: Remove underscore
 
         folder_select_layout.addWidget(self.folder_label, 1)
         folder_select_layout.addWidget(browse_btn)
+
         folder_layout.addLayout(folder_select_layout)
         container_layout.addWidget(folder_group)
 
         container_layout.addStretch()
-
         scroll.setWidget(container)
         main_layout.addWidget(scroll)
 
         # Update advanced section visibility based on initial format
-        self._update_advanced_visibility()
+        self.update_advanced_visibility()  # FIXED: Remove underscore
 
     def _connect_signals(self):
         """Connect signals from child widgets."""
@@ -134,10 +159,10 @@ class SettingsPanel(QWidget):
     def _on_format_changed(self, format_enum: ImageFormat):
         """Handle format change - update advanced settings visibility."""
         self.advanced_widget.set_active_format(format_enum)
-        self._update_advanced_visibility()
+        self.update_advanced_visibility()  # FIXED: Remove underscore
         self._on_settings_changed()
 
-    def _update_advanced_visibility(self):
+    def update_advanced_visibility(self):  # FIXED: Renamed from _update_advanced_visibility
         """Show/hide advanced section based on format."""
         current_format = self.output_widget.get_selected_format()
         should_show = self.advanced_widget.should_show_for_format(current_format)
@@ -178,7 +203,6 @@ class SettingsPanel(QWidget):
 
         return settings
 
-    # ← ADDED: Method for compatibility (calls update_preview internally)
     def set_current_image(self, image_file: ImageFile):
         """Update with current image (compatibility method)."""
         self.update_preview(image_file)
@@ -204,17 +228,15 @@ class SettingsPanel(QWidget):
         """Get output directory path."""
         return self.output_widget.output_folder
 
-    # ← ADDED: Alias for compatibility
     def get_output_folder(self) -> Path:
         """Get output folder path (alias for get_output_directory)."""
         return self.get_output_directory()
 
-    # ← ADDED: Missing method
     def set_convert_enabled(self, enabled: bool):
         """Enable/disable convert button."""
         self.convert_btn.setEnabled(enabled)
 
-    def _browse_output_folder(self):
+    def browse_output_folder(self):  # FIXED: Renamed from _browse_output_folder
         """Open folder selection dialog."""
         folder = QFileDialog.getExistingDirectory(
             self, "Select Output Folder", str(self.output_widget.output_folder)

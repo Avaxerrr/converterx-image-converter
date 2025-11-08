@@ -17,18 +17,23 @@ from .preview_toolbar import PreviewToolbar
 from .preview_types import PreviewMode
 from utils.logger import logger
 from ui.widgets.loading_spinner import LoadingSpinner
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from core.app_settings import AppSettingsController
 
 
 class PreviewWidget(QWidget):
     """Widget for displaying image preview with zoom and rotation."""
 
-    # Preview settings
-    PREVIEW_MAX_DIMENSION = 1920  # Max width or height for preview mode
-    MAX_PREVIEW_CACHE = 10        # Cache up to 10 preview images
-    MAX_HD_CACHE = 2              # Cache up to 2 HD images
 
-    def __init__(self, parent=None):
+    def __init__(self, controller: 'AppSettingsController', parent=None):
         super().__init__(parent)
+
+        # Store controller and load settings
+        self.controller = controller
+        self._load_preview_settings()
+
         self.current_file: ImageFile = None
         self.current_pixmap: QPixmap = None
         self.current_rotation: int = 0
@@ -42,6 +47,22 @@ class PreviewWidget(QWidget):
 
         self._setup_ui()
         logger.info(f"Preview widget initialized (max dimension: {self.PREVIEW_MAX_DIMENSION}px)", "PreviewWidget")
+
+        # NEW: Listen for settings changes
+        self.controller.preview_changed.connect(self._on_preview_settings_changed)
+        logger.debug("Preview widget connected to settings signals", "PreviewWidget")
+
+    def _load_preview_settings(self) -> None:
+        """Load preview settings from controller."""
+        self.PREVIEW_MAX_DIMENSION = self.controller.get_preview_max_dimension()
+        self.MAX_PREVIEW_CACHE = self.controller.get_preview_cache_size()
+        self.MAX_HD_CACHE = self.controller.get_hd_cache_size()
+
+        logger.debug(
+            f"Preview settings loaded: max_dim={self.PREVIEW_MAX_DIMENSION}, "
+            f"cache={self.MAX_PREVIEW_CACHE}, hd_cache={self.MAX_HD_CACHE}",
+            "PreviewWidget"
+        )
 
     def _setup_ui(self):
         """Initialize the user interface."""
@@ -608,3 +629,37 @@ class PreviewWidget(QWidget):
                     x = (self.width() - container_width) // 2
                     y = (self.height() - container_height) // 2
                     container.setGeometry(x, y, container_width, container_height)
+
+    def _on_preview_settings_changed(self) -> None:
+        """
+        Handle preview settings changes from app settings dialog.
+
+        Reloads settings and trims caches if sizes decreased.
+        """
+        logger.info("Preview settings changed, reloading...", "PreviewWidget")
+
+        # Reload settings
+        self._load_preview_settings()
+
+        # Trim preview cache if size decreased
+        if len(self.preview_cache) > self.MAX_PREVIEW_CACHE:
+            excess = len(self.preview_cache) - self.MAX_PREVIEW_CACHE
+            keys_to_remove = list(self.preview_cache.keys())[:excess]
+            for key in keys_to_remove:
+                del self.preview_cache[key]
+            logger.debug(f"Trimmed {excess} entries from preview cache", "PreviewWidget")
+
+        # Trim HD cache if size decreased
+        if len(self.hd_cache) > self.MAX_HD_CACHE:
+            excess = len(self.hd_cache) - self.MAX_HD_CACHE
+            keys_to_remove = list(self.hd_cache.keys())[:excess]
+            for key in keys_to_remove:
+                del self.hd_cache[key]
+            logger.debug(f"Trimmed {excess} entries from HD cache", "PreviewWidget")
+
+        logger.info(
+            f"Preview settings applied: max_dim={self.PREVIEW_MAX_DIMENSION}, "
+            f"cache={self.MAX_PREVIEW_CACHE}/{len(self.preview_cache)}, "
+            f"hd_cache={self.MAX_HD_CACHE}/{len(self.hd_cache)}",
+            "PreviewWidget"
+        )

@@ -1,6 +1,7 @@
 Image Converter/
 +--- core
 |    +--- __init__.py
+|    +--- app_settings.py
 |    +--- converter.py
 |    +--- format_settings.py
 |    \--- output_preview_generator.py
@@ -46,6 +47,13 @@ Image Converter/
 |    \--- image_file.py
 |    
 +--- ui
+|    +--- app_settings
+|    |    +--- __init__.py
+|    |    +--- app_settings_dialog.py
+|    |    +--- defaults_page.py
+|    |    +--- performance_page.py
+|    |    \--- preview_page.py
+|    |    
 |    +--- preview
 |    |    +--- __init__.py
 |    |    +--- image_graphics_view.py
