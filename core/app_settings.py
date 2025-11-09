@@ -9,10 +9,11 @@ Settings Categories:
 - Preview: Cache sizes, max dimensions, debounce timing
 - Defaults: Default quality and format for conversions
 """
+from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, QSettings, QThreadPool
 from typing import Optional, cast
-from core.format_settings import ImageFormat
+from core.format_settings import ImageFormat, OutputLocationMode, FilenameTemplate
 from utils.logger import logger
 
 
@@ -38,6 +39,12 @@ class SettingsKeys:
     # Defaults category
     DEFAULT_QUALITY = "defaults/quality"
     DEFAULT_OUTPUT_FORMAT = "defaults/output_format"
+    DEFAULT_OUTPUT_LOCATION_MODE = "defaults/output_location_mode"
+    DEFAULT_CUSTOM_OUTPUT_FOLDER = "defaults/custom_output_folder"
+    DEFAULT_ENABLE_FILENAME_SUFFIX = "defaults/enable_filename_suffix"
+    DEFAULT_FILENAME_TEMPLATE = "defaults/filename_template"
+    DEFAULT_CUSTOM_SUFFIX = "defaults/custom_suffix"
+    DEFAULT_AUTO_INCREMENT = "defaults/auto_increment"
 
 
 class AppSettingsController(QObject):
@@ -228,6 +235,49 @@ class AppSettingsController(QObject):
 
         return format_map.get(format_str, ImageFormat.WEBP)
 
+    def get_default_output_location_mode(self) -> OutputLocationMode:
+        raw = self.settings.value(SettingsKeys.DEFAULT_OUTPUT_LOCATION_MODE, "custom")
+        mode_str: str = raw if isinstance(raw, str) else str(raw)
+        mapping: dict[str, OutputLocationMode] = {
+            "custom": OutputLocationMode.CUSTOM_FOLDER,
+            "same": OutputLocationMode.SAME_AS_SOURCE,
+            "ask": OutputLocationMode.ASK_EVERY_TIME,
+        }
+        return mapping.get(mode_str, OutputLocationMode.CUSTOM_FOLDER)
+
+    def get_default_custom_output_folder(self) -> Path:
+        # Default to ~/Pictures/Converted
+        default_path = Path.home() / "Pictures" / "Converted"
+        raw = self.settings.value(
+            SettingsKeys.DEFAULT_CUSTOM_OUTPUT_FOLDER,
+            str(default_path)
+        )
+        path_str: str = raw if isinstance(raw, str) else str(raw)
+        return Path(path_str)
+
+    def get_default_enable_filename_suffix(self) -> bool:
+        return bool(self.settings.value(SettingsKeys.DEFAULT_ENABLE_FILENAME_SUFFIX, True, type=bool))
+
+    from typing import cast  # already present in this file
+
+    def get_default_filename_template(self) -> FilenameTemplate:
+        # Coerce to str for type checkers, then map to enum
+        raw = self.settings.value(SettingsKeys.DEFAULT_FILENAME_TEMPLATE, "CONVERTED")
+        name: str = raw if isinstance(raw, str) else str(raw)
+        mapping: dict[str, FilenameTemplate] = {
+            "CONVERTED": FilenameTemplate.CONVERTED,
+            "FORMAT": FilenameTemplate.FORMAT,
+            "QUALITY": FilenameTemplate.QUALITY,
+            "CUSTOM": FilenameTemplate.CUSTOM,
+        }
+        return mapping.get(name, FilenameTemplate.CONVERTED)
+
+    def get_default_custom_suffix(self) -> str:
+        return self.settings.value(SettingsKeys.DEFAULT_CUSTOM_SUFFIX, "", type=str) or ""
+
+    def get_default_auto_increment(self) -> bool:
+        return bool(self.settings.value(SettingsKeys.DEFAULT_AUTO_INCREMENT, True, type=bool))
+
     # ============================================================
     # PERFORMANCE SETTINGS - Setters
     # ============================================================
@@ -417,6 +467,42 @@ class AppSettingsController(QObject):
 
         # Store as string for QSettings compatibility
         self.settings.setValue(SettingsKeys.DEFAULT_OUTPUT_FORMAT, value.name)
+        self.defaults_changed.emit()
+
+    def set_default_output_location_mode(self, value: OutputLocationMode) -> None:
+        if not isinstance(value, OutputLocationMode):
+            raise ValueError("default_output_location_mode must be an OutputLocationMode enum")
+        self.settings.setValue(SettingsKeys.DEFAULT_OUTPUT_LOCATION_MODE, value.value)  # "custom"|"same"|"ask"
+        self.defaults_changed.emit()
+
+    def set_default_custom_output_folder(self, path: Path) -> None:
+        if not isinstance(path, Path):
+            raise ValueError("default_custom_output_folder must be a Path")
+        self.settings.setValue(SettingsKeys.DEFAULT_CUSTOM_OUTPUT_FOLDER, str(path))
+        self.defaults_changed.emit()
+
+    def set_default_enable_filename_suffix(self, enabled: bool) -> None:
+        if not isinstance(enabled, bool):
+            raise ValueError("enable_filename_suffix must be a bool")
+        self.settings.setValue(SettingsKeys.DEFAULT_ENABLE_FILENAME_SUFFIX, enabled)
+        self.defaults_changed.emit()
+
+    def set_default_filename_template(self, value: FilenameTemplate) -> None:
+        if not isinstance(value, FilenameTemplate):
+            raise ValueError("filename_template must be a FilenameTemplate enum")
+        self.settings.setValue(SettingsKeys.DEFAULT_FILENAME_TEMPLATE, value.name)
+        self.defaults_changed.emit()
+
+    def set_default_custom_suffix(self, text: str) -> None:
+        if not isinstance(text, str):
+            raise ValueError("custom_suffix must be a string")
+        self.settings.setValue(SettingsKeys.DEFAULT_CUSTOM_SUFFIX, text)
+        self.defaults_changed.emit()
+
+    def set_default_auto_increment(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise ValueError("auto_increment must be a bool")
+        self.settings.setValue(SettingsKeys.DEFAULT_AUTO_INCREMENT, value)
         self.defaults_changed.emit()
 
     # ============================================================

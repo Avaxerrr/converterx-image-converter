@@ -11,7 +11,7 @@ import subprocess
 import platform
 
 from core.app_settings import AppSettingsController
-from core.format_settings import ImageFormat, OutputLocationMode
+from core.format_settings import ImageFormat, OutputLocationMode, FilenameTemplate
 from models import ImageFile
 from ui.app_settings import AppSettingsDialog
 from ui.batch_window import BatchWindow
@@ -849,26 +849,65 @@ class MainWindow(QMainWindow):
 
     def _apply_default_settings(self) -> None:
         """
-        Apply default quality and format from app settings to settings panel.
-
-        Called once during startup to initialize UI with saved defaults.
+        Apply default quality, format, and output/filename defaults from app settings
+        to the OutputSettingsWidget at startup.
         """
-        # Get defaults from controller
+        # 1) Read defaults from controller
         default_quality = self.app_settings.get_default_quality()
         default_format = self.app_settings.get_default_output_format()
 
-        # Apply to settings panel widgets
-        self.settings_panel.output_widget.quality_slider.setValue(default_quality)
+        # 2) Reference the runtime widget once
+        ow = self.settings_panel.output_widget  # OutputSettingsWidget
 
-        # Map format enum to combobox index
-        format_map = {
-            ImageFormat.WEBP: 0,
-            ImageFormat.AVIF: 1,
-            ImageFormat.JPEG: 2,
-            ImageFormat.PNG: 3
+        # 3) Set format by matching the enum stored as itemData
+        for i in range(ow.format_combo.count()):
+            if ow.format_combo.itemData(i) == default_format:
+                ow.format_combo.setCurrentIndex(i)
+                break
+
+        # 4) Set quality once
+        ow.quality_slider.setValue(default_quality)
+
+        # 5) Output location mode radios
+        mode = self.app_settings.get_default_output_location_mode()
+        ow.output_mode_custom.setChecked(mode == OutputLocationMode.CUSTOM_FOLDER)
+        ow.output_mode_source.setChecked(mode == OutputLocationMode.SAME_AS_SOURCE)
+        ow.output_mode_ask.setChecked(mode == OutputLocationMode.ASK_EVERY_TIME)
+
+        # 6) Default custom folder path
+        folder = self.app_settings.get_default_custom_output_folder()
+        ow.output_folder = folder
+        ow.output_folder_edit.setText(str(folder))
+
+        # 7) Filename suffix enable
+        ow.enable_suffix_check.setChecked(self.app_settings.get_default_enable_filename_suffix())
+
+        # Enforce enabled/disabled state for suffix-related controls
+        enabled = ow.enable_suffix_check.isChecked()
+        ow.filename_template_combo.setEnabled(enabled)
+        # If a container exists in your widget, enable that; otherwise enable the input directly
+        if hasattr(ow, "custom_suffix_container"):
+            ow.custom_suffix_container.setEnabled(enabled)
+        if hasattr(ow, "custom_suffix_input"):
+            ow.custom_suffix_input.setEnabled(enabled)
+
+        # 8) Filename template + custom text
+        tmpl = self.app_settings.get_default_filename_template()
+        template_index_map = {
+            FilenameTemplate.CONVERTED: 0,
+            FilenameTemplate.FORMAT: 1,
+            FilenameTemplate.QUALITY: 2,
+            FilenameTemplate.CUSTOM: 3,
         }
-        format_index = format_map.get(default_format, 0)
-        self.settings_panel.output_widget.format_combo.setCurrentIndex(format_index)
+        ow.filename_template_combo.setCurrentIndex(template_index_map.get(tmpl, 0))
+        ow._on_template_changed()  # ensure custom field visibility matches
+        ow.custom_suffix_input.setText(self.app_settings.get_default_custom_suffix())
+
+        # 9) Auto-increment toggle
+        ow.auto_increment_check.setChecked(self.app_settings.get_default_auto_increment())
+
+        # 10) Sync current settings snapshot from UI
+        self.current_settings = self.settings_panel.get_settings()
 
         logger.info(
             f"Default settings applied: {default_format.name} Q{default_quality}",

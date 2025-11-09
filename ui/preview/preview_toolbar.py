@@ -182,7 +182,7 @@ class PreviewToolbar(QWidget):
     def enable_buttons(self, enabled: bool):
         """Enable or disable all toolbar buttons."""
         self.hd_toggle_btn.setEnabled(enabled)
-        self.output_preview_btn.setEnabled(enabled)  # NEW: Enable/disable output preview button
+        self.output_preview_btn.setEnabled(enabled)  # Enable/disable output preview button
         self.rotate_left_btn.setEnabled(enabled)
         self.rotate_right_btn.setEnabled(enabled)
         self.fit_btn.setEnabled(enabled)
