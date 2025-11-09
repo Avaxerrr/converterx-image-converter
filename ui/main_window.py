@@ -216,6 +216,19 @@ class MainWindow(QMainWindow):
         )
         self.settings_panel.set_current_image(image_file)
 
+        # Clear estimated size when switching images
+        self.settings_panel.output_widget.clear_estimated_size()
+        logger.debug(f"Estimated size cleared for new image: {image_file.filename}", source="MainWindow")
+
+        # Update original size for the new image
+        self.settings_panel.output_widget.update_original_size(image_file.size_bytes)
+        logger.debug(f"Original size updated: {image_file.size_str}", source="MainWindow")
+
+        # If output preview is ON, regenerate for new image
+        if self.preview.toolbar.output_preview_btn.isChecked():
+            logger.debug("Output preview active - regenerating for new image", source="MainWindow")
+            self._generate_output_preview()
+
     def _on_selection_changed(self):
         """Handle selection change."""
         selected_items = self.file_list.list_widget.selectedItems()
@@ -243,6 +256,11 @@ class MainWindow(QMainWindow):
                 "Settings changed while output preview active - restarting debounce timer",
                 source="MainWindow"
             )
+
+            # Clear estimated size during debounce period
+            self.settings_panel.output_widget.clear_estimated_size()
+            logger.debug("Estimated size cleared (settings changed, regenerating)", source="MainWindow")
+
             debounce = self.app_settings.get_out_preview_debounce()
             self.output_preview_debounce_timer.stop()
             self.output_preview_debounce_timer.start(debounce)
@@ -513,6 +531,10 @@ class MainWindow(QMainWindow):
         else:
             logger.info("Output preview disabled - reverting to original", source="MainWindow")
             self.output_preview_debounce_timer.stop()
+
+            # Clear estimated size when output preview is disabled
+            self.settings_panel.output_widget.clear_estimated_size()
+            logger.debug("Estimated size cleared (output preview disabled)", source="MainWindow")
 
             selected_file = self.file_list.get_selected_file()
             if selected_file:
@@ -967,6 +989,16 @@ class MainWindow(QMainWindow):
             )
         else:
             logger.debug(f"Thread pool size unchanged ({thread_count} threads)", source="MainWindow")
+
+        # Apply preview max dimension (immediate - reload current preview)
+        selected_file = self.file_list.get_selected_file()
+        if selected_file:
+            logger.info(
+                f"Preview max dimension changed, reloading current preview: {selected_file.filename}",
+                source="MainWindow"
+            )
+            # Reload the preview with new dimension setting
+            self.preview.show_image(selected_file)
 
     def _on_files_removed(self):
         """Handle files being removed from the list."""

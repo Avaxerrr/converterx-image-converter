@@ -127,7 +127,7 @@ class OutputSettingsWidget(QWidget):
         layout.addWidget(self.metadata_check)
 
         # Estimated File Size Display
-        self.estimated_size_label = QLabel("Est. Size: -- | Orig. Size: --")
+        self.estimated_size_label = QLabel("Est. Size: —")
         self.estimated_size_label.setToolTip("SHow estimated file size based on current settings. Actual size may differ after conversion.")
 
         self.estimated_size_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -378,3 +378,16 @@ class OutputSettingsWidget(QWidget):
         if size_bytes >= 1024 * 1024:
             return f"{size_bytes / (1024 * 1024):.2f} MB"
         return f"{size_bytes / 1024:.1f} KB"
+
+    def clear_estimated_size(self):
+        """
+        Clear both estimated size and original size display.
+
+        Used when switching images or disabling output preview to prevent
+        stale data from previous image.
+        """
+        # Clear the internal original size tracker
+        self._original_size_bytes = None
+
+        # Reset label to placeholder
+        self.estimated_size_label.setText("Est. Size: —")

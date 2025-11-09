@@ -351,7 +351,7 @@ class PreviewWidget(QWidget):
     def _fit_to_window(self):
         """Fit image to window size."""
         if self.pixmap_item:
-            self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)  # ADD THIS
+            self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)
             self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
             self.view.zoom_factor = 1.0
             self._update_zoom_label()
@@ -634,9 +634,12 @@ class PreviewWidget(QWidget):
         """
         Handle preview settings changes from app settings dialog.
 
-        Reloads settings and trims caches if sizes decreased.
+        Reloads settings, trims caches, and reloads current image if dimension changed.
         """
         logger.info("Preview settings changed, reloading...", "PreviewWidget")
+
+        # Store old dimension to check if it changed
+        old_dimension = self.PREVIEW_MAX_DIMENSION
 
         # Reload settings
         self._load_preview_settings()
@@ -656,6 +659,27 @@ class PreviewWidget(QWidget):
             for key in keys_to_remove:
                 del self.hd_cache[key]
             logger.debug(f"Trimmed {excess} entries from HD cache", "PreviewWidget")
+
+        # If dimension changed, clear preview cache and reload current image
+        if old_dimension != self.PREVIEW_MAX_DIMENSION:
+            logger.info(
+                f"Preview max dimension changed: {old_dimension}px → {self.PREVIEW_MAX_DIMENSION}px",
+                "PreviewWidget"
+            )
+
+            # Clear preview cache (dimension changed, cached previews are wrong size)
+            self.preview_cache.clear()
+            logger.debug("Preview cache cleared due to dimension change", "PreviewWidget")
+
+            # Reload current image if one is displayed
+            if self.current_file:
+                logger.info(
+                    f"Reloading {self.current_file.filename} with new dimension",
+                    "PreviewWidget"
+                )
+                self.show_image(self.current_file)
+        else:
+            logger.debug(f"Preview max dimension unchanged ({self.PREVIEW_MAX_DIMENSION}px)", "PreviewWidget")
 
         logger.info(
             f"Preview settings applied: max_dim={self.PREVIEW_MAX_DIMENSION}, "
