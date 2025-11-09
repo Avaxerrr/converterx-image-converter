@@ -25,7 +25,7 @@ class PreviewToolbar(QWidget):
         super().__init__(parent)
         self.setObjectName("floatingToolbar")
 
-        # CRITICAL: Enable styled background for QSS to work
+        # Enable styled background for QSS to work
         self.setAttribute(Qt.WA_StyledBackground, True)
 
         self.current_mode = PreviewMode.PREVIEW  # Start in preview mode
@@ -67,9 +67,9 @@ class PreviewToolbar(QWidget):
         self.output_preview_btn.setObjectName("outputPreviewButton")
         # More detailed tooltip
         self.output_preview_btn.setToolTip(
-            "Toggle Output Preview (Show the final look of the image with settings applied)\n\n"
-            "Applied: Quality, Scale %, PNG compression, Lossless\n"
-            "Excluded: Target file size, Advanced options"
+            "Toggle Output Preview (shows the final image with applicable settings)\n\n"
+            "Applied in preview: Quality, Scale (%), PNG compression, Lossless mode\n"
+            "Excluded from preview: Target file size; Advanced options: WebP Method; AVIF Speed"
         )
         self.output_preview_btn.setFixedSize(button_size)
         self.output_preview_btn.clicked.connect(self._on_output_preview_clicked)

@@ -112,7 +112,7 @@ class PreviewWidget(QWidget):
     def _position_floating_toolbar(self):
         """Position the floating toolbar in the top-right corner of the preview area."""
         if hasattr(self, 'toolbar'):
-            margin_right = 16
+            margin_right = 32
             margin_top = 12
 
             # Use self.width() instead of self.view.width() for proper positioning

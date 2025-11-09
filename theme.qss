@@ -576,15 +576,15 @@ PreviewWidget #zoomLabel {
 }
 
 PreviewWidget #floatingToolbar {
-    background-color: rgba(45, 45, 46, 0.60);
-    border: 1px solid #3e3e42;
+    background-color: rgba(45, 45, 46, 0.40);
+    border: 0px solid #3e3e42;
     border-radius: 4px;
     padding: 4px;
 }
 
 PreviewWidget #toolButton {
     background-color: transparent;
-    border: 1px solid transparent;
+    border: 0px solid transparent;
     border-radius: 3px;
     color: #cccccc;
     font-size: 14pt;
@@ -595,7 +595,7 @@ PreviewWidget #toolButton {
 }
 
 PreviewWidget #toolButton:hover {
-    background-color: rgba(62, 62, 66, 0.6);
+    background-color: rgba(62, 62, 66, 0.1);
     background-color: #3e3e42;
     border-color: #505050;
 }
@@ -827,25 +827,25 @@ MetadataDialog QTextEdit {
    ============================================ */
 /* Vertical scrollbar */
 QScrollBar:vertical {
-    background-color: transparent;  /* ✅ Transparent background */
+    background-color: transparent;  /*  Transparent background */
     width: 12px;
     border: none;
     margin: 0px;
 }
 
 QScrollBar::handle:vertical {
-    background-color: #424242;      /* ✅ Subtle gray */
+    background-color: #424242;      /*  Subtle gray */
     min-height: 30px;
-    border-radius: 6px;             /* ✅ Rounded */
-    margin: 2px;                    /* ✅ Spacing from edges */
+    border-radius: 6px;             /*  Rounded */
+    margin: 2px;                    /*  Spacing from edges */
 }
 
 QScrollBar::handle:vertical:hover {
-    background-color: #4e4e4e;      /* ✅ Lighter on hover */
+    background-color: #4e4e4e;      /*  Lighter on hover */
 }
 
 QScrollBar::handle:vertical:pressed {
-    background-color: #007acc;      /* ✅ Blue when dragging */
+    background-color: #007acc;      /*  Blue when dragging */
 }
 
 /* Remove arrow buttons */
@@ -953,7 +953,7 @@ QToolButton#hdToggleButton {
 }
 
 QToolButton#hdToggleButton:hover {
-    background-color: rgba(255, 255, 255, 0.05);  /* Subtle hover like other buttons */
+    background-color: rgba(255, 255, 255, 0.1);  /* Subtle hover like other buttons */
     border: none;
 }
 
@@ -988,7 +988,7 @@ QToolButton#hdToggleButton:disabled QIcon {
 }
 
 /* ============================================
-   OUTPUT PREVIEW TOGGLE BUTTON - MATCH HD BUTTON STYLING
+   OUTPUT PREVIEW TOGGLE BUTTON
    ============================================ */
 
 /* Inactive state - blend with other buttons (transparent) */
@@ -999,7 +999,7 @@ QToolButton#outputPreviewButton {
 }
 
 QToolButton#outputPreviewButton:hover {
-    background-color: rgba(255, 255, 255, 0.05);  /* Subtle hover like other buttons */
+    background-color: rgba(255, 255, 255, 0.1);  /* Subtle hover like other buttons */
     border: none;
 }
 

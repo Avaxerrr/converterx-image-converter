@@ -128,6 +128,8 @@ class OutputSettingsWidget(QWidget):
 
         # Estimated File Size Display
         self.estimated_size_label = QLabel("Est. Size: -- | Orig. Size: --")
+        self.estimated_size_label.setToolTip("SHow estimated file size based on current settings. Actual size may differ after conversion.")
+
         self.estimated_size_label.setAlignment(QtCore.Qt.AlignCenter)
         self.estimated_size_label.setObjectName("estimated-size-label")
         layout.addWidget(self.estimated_size_label)
@@ -138,13 +140,25 @@ class OutputSettingsWidget(QWidget):
         location_layout = QVBoxLayout(location_group)
         location_layout.setSpacing(6)
 
-        # Custom folder option
+        # Same as source option (first)
+        self.output_mode_source = QRadioButton("Same as Source")
+        self.output_mode_source.setToolTip("Save converted files next to original files")
+        self.output_mode_source.toggled.connect(self._on_output_mode_changed)
+        location_layout.addWidget(self.output_mode_source)
+
+        # Ask every time option (second)
+        self.output_mode_ask = QRadioButton("Ask Every Time")
+        self.output_mode_ask.setToolTip("Choose output folder before each conversion")
+        self.output_mode_ask.toggled.connect(self._on_output_mode_changed)
+        location_layout.addWidget(self.output_mode_ask)
+
+        # Custom folder option (third)
         self.output_mode_custom = QRadioButton("Custom Folder")
         self.output_mode_custom.setChecked(True)
         self.output_mode_custom.toggled.connect(self._on_output_mode_changed)
         location_layout.addWidget(self.output_mode_custom)
 
-        # Custom folder path + browse button
+        # Custom folder path + browse button (immediately below Custom Folder radio)
         folder_layout = QHBoxLayout()
         folder_layout.setContentsMargins(20, 0, 0, 0)
         self.output_folder_edit = QLineEdit()
@@ -155,18 +169,6 @@ class OutputSettingsWidget(QWidget):
         folder_layout.addWidget(self.output_folder_edit, 1)
         folder_layout.addWidget(self.output_folder_browse_btn)
         location_layout.addLayout(folder_layout)
-
-        # Same as source option
-        self.output_mode_source = QRadioButton("Same as Source")
-        self.output_mode_source.setToolTip("Save converted files next to original files")
-        self.output_mode_source.toggled.connect(self._on_output_mode_changed)
-        location_layout.addWidget(self.output_mode_source)
-
-        # Ask every time option
-        self.output_mode_ask = QRadioButton("Ask Every Time")
-        self.output_mode_ask.setToolTip("Choose output folder before each conversion")
-        self.output_mode_ask.toggled.connect(self._on_output_mode_changed)
-        location_layout.addWidget(self.output_mode_ask)
 
         layout.addWidget(location_group)
 
