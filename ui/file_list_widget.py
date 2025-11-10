@@ -1,3 +1,4 @@
+from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QPushButton, QLabel, QListWidgetItem, QSizePolicy, QMenu, QAbstractItemView
@@ -60,7 +61,7 @@ class FileListWidget(QWidget):
         # Drag & drop hint label (shown when empty)
         self.drag_hint_label = QLabel("Drag & drop images here\nor click 'Add files'")
         self.drag_hint_label.setObjectName("dragHintLabel")
-        self.drag_hint_label.setAlignment(Qt.AlignCenter)
+        self.drag_hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.drag_hint_label.setWordWrap(True)
         self.drag_hint_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.drag_hint_label)
@@ -93,10 +94,12 @@ class FileListWidget(QWidget):
 
         self.add_btn = QPushButton("Add files")
         self.add_btn.setObjectName("addButton")
+        self.add_btn.setIcon(QIcon("icons/add-image.svg"))
         self.add_btn.setMinimumHeight(32)
 
         self.clear_btn = QPushButton("Clear files")
         self.clear_btn.setObjectName("clearButton")
+        self.clear_btn.setIcon(QIcon("icons/clear-images.svg"))
         self.clear_btn.setMinimumHeight(32)
 
         button_layout.addWidget(self.add_btn)

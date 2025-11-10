@@ -16,6 +16,9 @@ class ResizeMode(Enum):
     """Image resize modes."""
     NONE = "none"
     PERCENTAGE = "percentage"
+    FIT_TO_WIDTH = "fit_to_width"
+    FIT_TO_HEIGHT = "fit_to_height"
+    FIT_TO_DIMENSIONS = "fit_to_dimensions"
 
 
 class OutputLocationMode(Enum):
@@ -85,6 +88,13 @@ class ConversionSettings:
     # Resize settings
     resize_mode: ResizeMode = ResizeMode.NONE
     resize_percentage: float = 100.0  # 10-100%
+
+    # Pixel-based resize settings
+    target_width_px: Optional[int] = None
+    target_height_px: Optional[int] = None
+    max_width_px: Optional[int] = None
+    max_height_px: Optional[int] = None
+    allow_upscaling: bool = False
 
     # Output field
     output_location_mode: OutputLocationMode = OutputLocationMode.CUSTOM_FOLDER

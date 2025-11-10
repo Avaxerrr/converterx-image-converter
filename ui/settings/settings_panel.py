@@ -72,6 +72,7 @@ class SettingsPanel(QWidget):
         # Convert button
         self.convert_btn = QPushButton("Convert Selected")
         self.convert_btn.setObjectName("convert-button")
+        self.convert_btn.setIcon(QIcon("icons/convert-image.svg"))
         self.convert_btn.clicked.connect(self.convert_requested.emit)
         self.convert_btn.setEnabled(False)
 
@@ -148,35 +149,40 @@ class SettingsPanel(QWidget):
 
     def get_settings(self) -> ConversionSettings:
         """Aggregate and return settings from all components."""
-        # FIXED: Use correct attribute names
         output_settings = self.output_widget.get_settings()
         resize_settings = self.resize_widget.get_settings()
         advanced_settings = self.advanced_widget.get_settings()
 
-        # Merge all settings into ConversionSettings object
         settings = ConversionSettings(
-            output_format=output_settings['output_format'],
-            quality=output_settings['quality'],
-            lossless=output_settings['lossless'],
-            keep_metadata=output_settings['keep_metadata'],
-            png_compress_level=output_settings['png_compress_level'],
-            target_size_kb=output_settings['target_size_kb'],
-            resize_mode=resize_settings['resize_mode'],
-            resize_percentage=resize_settings['resize_percentage'],
+            output_format=output_settings["output_format"],
+            quality=output_settings["quality"],
+            lossless=output_settings["lossless"],
+            keep_metadata=output_settings["keep_metadata"],
+            png_compress_level=output_settings["png_compress_level"],
+            target_size_kb=output_settings["target_size_kb"],
+
+            # Resize settings
+            resize_mode=resize_settings["resize_mode"],
+            resize_percentage=resize_settings["resize_percentage"],
+            target_width_px=resize_settings["target_width_px"],
+            target_height_px=resize_settings["target_height_px"],
+            max_width_px=resize_settings["max_width_px"],
+            max_height_px=resize_settings["max_height_px"],
+            allow_upscaling=resize_settings["allow_upscaling"],
 
             # Advanced settings (format-specific)
-            webp_method=advanced_settings.get('webp_method', 6),
-            webp_subsampling=advanced_settings.get('webp_subsampling', (2, 2)),
-            avif_speed=advanced_settings.get('avif_speed', 4),
-            avif_range=advanced_settings.get('avif_range', 'full'),
+            webp_method=advanced_settings.get("webp_method", 6),
+            webp_subsampling=advanced_settings.get("webp_subsampling", (2, 2)),
+            avif_speed=advanced_settings.get("avif_speed", 4),
+            avif_range=advanced_settings.get("avif_range", "full"),
 
             # Output location and filename settings
-            output_location_mode=output_settings['output_location_mode'],
-            custom_output_folder=output_settings['custom_output_folder'],
-            filename_template=output_settings['filename_template'],
-            enable_filename_suffix=output_settings['enable_filename_suffix'],
-            custom_suffix=output_settings['custom_suffix'],
-            auto_increment=output_settings['auto_increment']
+            output_location_mode=output_settings["output_location_mode"],
+            custom_output_folder=output_settings["custom_output_folder"],
+            filename_template=output_settings["filename_template"],
+            enable_filename_suffix=output_settings["enable_filename_suffix"],
+            custom_suffix=output_settings["custom_suffix"],
+            auto_increment=output_settings["auto_increment"],
         )
 
         return settings

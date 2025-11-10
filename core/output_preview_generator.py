@@ -19,7 +19,7 @@ from pathlib import Path
 from PIL import Image, ImageOps
 from typing import Optional
 from core.format_settings import ConversionSettings, ResizeMode, ImageFormat
-from utils.logger import logger, LogLevel
+from utils.logger import logger
 
 
 class OutputPreviewGenerator:
@@ -102,49 +102,109 @@ class OutputPreviewGenerator:
             return None
 
     @staticmethod
-    def _apply_resize(
-            img: Image.Image,
-            settings: ConversionSettings
-    ) -> Image.Image:
+    def _apply_resize(img: Image.Image, settings: ConversionSettings) -> Image.Image:
         """
-        Apply resize based on settings (ONLY scale percentage).
+        Apply resize based on settings for output preview.
+        """
 
-        Note: Max dimensions are skipped for output preview.
-        """
         if settings.resize_mode == ResizeMode.NONE:
             logger.debug("No resize applied (ResizeMode.NONE)", source="OutputPreviewGenerator")
             return img
 
         original_width, original_height = img.size
 
-        # ONLY handle percentage scaling (skip max dimensions for preview)
         if settings.resize_mode == ResizeMode.PERCENTAGE:
             scale = settings.resize_percentage / 100.0
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
 
-            logger.debug(
-                f"Applying scale {settings.resize_percentage}%: "
-                f"{original_width}×{original_height} → {new_width}×{new_height}",
-                source="OutputPreviewGenerator"
-            )
+            if (new_width, new_height) != (original_width, original_height):
+                logger.debug(
+                    f"Percentage: {original_width}×{original_height} → {new_width}×{new_height}",
+                    source="OutputPreviewGenerator"
+                )
+                return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            return img
 
-            # Use high-quality Lanczos resampling
-            resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        elif settings.resize_mode == ResizeMode.FIT_TO_WIDTH:
+            if not settings.target_width_px:
+                logger.debug("Fit to width: No target specified", source="OutputPreviewGenerator")
+                return img
 
-            logger.info(
-                f"Resized to {new_width}×{new_height} ({scale * 100:.1f}%)",
-                source="OutputPreviewGenerator"
-            )
+            target_w = settings.target_width_px
+            aspect_ratio = original_width / original_height
+            new_w = target_w
+            new_h = int(target_w / aspect_ratio)
 
-            return resized
+            if not settings.allow_upscaling and new_w > original_width:
+                logger.debug("Fit to width: Upscaling disabled", source="OutputPreviewGenerator")
+                return img
 
-        elif settings.resize_mode == ResizeMode.MAXDIMENSIONS:
-            # Skip max dimensions for output preview (different from scale %)
-            logger.debug(
-                "Skipping max dimensions for output preview (not applied)",
-                source="OutputPreviewGenerator"
-            )
+            if (new_w, new_h) != (original_width, original_height):
+                logger.debug(
+                    f"Fit to width: {original_width}×{original_height} → {new_w}×{new_h}",
+                    source="OutputPreviewGenerator"
+                )
+                return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            return img
+
+        elif settings.resize_mode == ResizeMode.FIT_TO_HEIGHT:
+            if not settings.target_height_px:
+                logger.debug("Fit to height: No target specified", source="OutputPreviewGenerator")
+                return img
+
+            target_h = settings.target_height_px
+            aspect_ratio = original_width / original_height
+            new_h = target_h
+            new_w = int(target_h * aspect_ratio)
+
+            if not settings.allow_upscaling and new_h > original_height:
+                logger.debug("Fit to height: Upscaling disabled", source="OutputPreviewGenerator")
+                return img
+
+            if (new_w, new_h) != (original_width, original_height):
+                logger.debug(
+                    f"Fit to height: {original_width}×{original_height} → {new_w}×{new_h}",
+                    source="OutputPreviewGenerator"
+                )
+                return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            return img
+
+        elif settings.resize_mode == ResizeMode.FIT_TO_DIMENSIONS:
+            max_w = settings.max_width_px
+            max_h = settings.max_height_px
+
+            if not max_w and not max_h:
+                logger.debug("Fit to dimensions: No dimensions specified", source="OutputPreviewGenerator")
+                return img
+
+            # Calculate fit dimensions
+            aspect_ratio = original_width / original_height
+
+            if max_w and not max_h:
+                new_w = max_w
+                new_h = int(max_w / aspect_ratio)
+            elif max_h and not max_w:
+                new_h = max_h
+                new_w = int(max_h * aspect_ratio)
+            else:
+                if original_width / max_w > original_height / max_h:
+                    new_w = max_w
+                    new_h = int(max_w / aspect_ratio)
+                else:
+                    new_h = max_h
+                    new_w = int(max_h * aspect_ratio)
+
+            if not settings.allow_upscaling:
+                new_w = min(new_w, original_width)
+                new_h = min(new_h, original_height)
+
+            if (new_w, new_h) != (original_width, original_height):
+                logger.debug(
+                    f"Fit to dimensions: {original_width}×{original_height} → {new_w}×{new_h}",
+                    source="OutputPreviewGenerator"
+                )
+                return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
             return img
 
         return img
@@ -268,7 +328,7 @@ class OutputPreviewGenerator:
                     source="OutputPreviewGenerator"
                 )
 
-            # pply subsampling (affects visual quality)
+            # Apply subsampling (affects visual quality)
             if settings.webp_subsampling:
                 # PIL expects string format "4:2:0" or "4:4:4"
                 subsampling_str = f"{settings.webp_subsampling[0]}:{settings.webp_subsampling[1]}:0"

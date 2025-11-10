@@ -77,11 +77,151 @@ class ImageConverter:
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
 
-            # Only resize if dimensions actually changed
             if (new_width, new_height) != (original_width, original_height):
+                logger.log(
+                    f"Percentage resize: {original_width}×{original_height} → {new_width}×{new_height} ({settings.resize_percentage}%)",
+                    LogLevel.INFO,
+                    "Converter"
+                )
                 return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            return img
+
+        elif settings.resize_mode == ResizeMode.FIT_TO_WIDTH:
+            # Resize to target width, height follows aspect ratio
+            if not settings.target_width_px:
+                logger.log("Fit to width: No target width specified", LogLevel.DEBUG, "Converter")
+                return img
+
+            target_w = settings.target_width_px
+            aspect_ratio = original_width / original_height
+            new_w = target_w
+            new_h = int(target_w / aspect_ratio)
+
+            # Don't upscale unless allowed
+            if not settings.allow_upscaling and new_w > original_width:
+                logger.log(
+                    f"Fit to width: Target {target_w}px exceeds original {original_width}px, upscaling disabled",
+                    LogLevel.DEBUG,
+                    "Converter"
+                )
+                return img
+
+            if (new_w, new_h) != (original_width, original_height):
+                logger.log(
+                    f"Fit to width: {original_width}×{original_height} → {new_w}×{new_h}",
+                    LogLevel.INFO,
+                    "Converter"
+                )
+                return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            return img
+
+        elif settings.resize_mode == ResizeMode.FIT_TO_HEIGHT:
+            # Resize to target height, width follows aspect ratio
+            if not settings.target_height_px:
+                logger.log("Fit to height: No target height specified", LogLevel.DEBUG, "Converter")
+                return img
+
+            target_h = settings.target_height_px
+            aspect_ratio = original_width / original_height
+            new_h = target_h
+            new_w = int(target_h * aspect_ratio)
+
+            # Don't upscale unless allowed
+            if not settings.allow_upscaling and new_h > original_height:
+                logger.log(
+                    f"Fit to height: Target {target_h}px exceeds original {original_height}px, upscaling disabled",
+                    LogLevel.DEBUG,
+                    "Converter"
+                )
+                return img
+
+            if (new_w, new_h) != (original_width, original_height):
+                logger.log(
+                    f"Fit to height: {original_width}×{original_height} → {new_w}×{new_h}",
+                    LogLevel.INFO,
+                    "Converter"
+                )
+                return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            return img
+
+        elif settings.resize_mode == ResizeMode.FIT_TO_DIMENSIONS:
+            # Fit within max width × max height box
+            max_w = settings.max_width_px
+            max_h = settings.max_height_px
+
+            if not max_w and not max_h:
+                logger.log("Fit to dimensions: No dimensions specified", LogLevel.DEBUG, "Converter")
+                return img
+
+            new_w, new_h = ImageConverter._calculate_fit_dimensions(
+                original_width, original_height, max_w, max_h, settings.allow_upscaling
+            )
+
+            if (new_w, new_h) != (original_width, original_height):
+                logger.log(
+                    f"Fit to dimensions: {original_width}×{original_height} → {new_w}×{new_h}",
+                    LogLevel.INFO,
+                    "Converter"
+                )
+                return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            else:
+                logger.log(
+                    "Fit to dimensions: Image already within constraints",
+                    LogLevel.DEBUG,
+                    "Converter"
+                )
+                return img
 
         return img
+
+    @staticmethod
+    def _calculate_fit_dimensions(
+            orig_w: int,
+            orig_h: int,
+            max_w: Optional[int],
+            max_h: Optional[int],
+            allow_upscale: bool
+    ) -> tuple[int, int]:
+        """
+        Calculate dimensions that fit within max_w × max_h while preserving aspect ratio.
+
+        Args:
+            orig_w: Original width
+            orig_h: Original height
+            max_w: Maximum width (None = unlimited)
+            max_h: Maximum height (None = unlimited)
+            allow_upscale: Whether to allow upscaling
+
+        Returns:
+            (new_width, new_height) tuple
+        """
+        aspect_ratio = orig_w / orig_h
+
+        # If only one dimension specified
+        if max_w and not max_h:
+            new_w = max_w
+            new_h = int(max_w / aspect_ratio)
+        elif max_h and not max_w:
+            new_h = max_h
+            new_w = int(max_h * aspect_ratio)
+        else:
+            # Both dimensions specified - fit within box
+            # Determine which dimension is the limiting factor
+            if orig_w / max_w > orig_h / max_h:
+                # Width is the limiting factor
+                new_w = max_w
+                new_h = int(max_w / aspect_ratio)
+            else:
+                # Height is the limiting factor
+                new_h = max_h
+                new_w = int(max_h * aspect_ratio)
+
+        # Don't upscale unless explicitly allowed
+        if not allow_upscale:
+            new_w = min(new_w, orig_w)
+            new_h = min(new_h, orig_h)
+
+        return new_w, new_h
 
     @staticmethod
     def _compress_to_target_size(

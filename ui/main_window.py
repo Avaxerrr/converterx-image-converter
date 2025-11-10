@@ -11,7 +11,7 @@ import subprocess
 import platform
 
 from core.app_settings import AppSettingsController
-from core.format_settings import ImageFormat, OutputLocationMode, FilenameTemplate
+from core.format_settings import ImageFormat, OutputLocationMode, FilenameTemplate, ResizeMode
 from models import ImageFile
 from ui.app_settings import AppSettingsDialog
 from ui.batch_window import BatchWindow
@@ -191,22 +191,34 @@ class MainWindow(QMainWindow):
     def _on_clear_files(self):
         """Handle Clear All button click."""
         if not self.file_list.image_files:
+            logger.debug("No files to clear", source="MainWindow")
             return
 
+        # Confirm with user
+        from PySide6.QtWidgets import QMessageBox
         reply = QMessageBox.question(
             self,
-            "Clear Files",
-            "Remove all files from the list?",
-            QMessageBox.Yes | QMessageBox.No
+            "Clear All Files",
+            f"Remove all {len(self.file_list.image_files)} files from the list?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.file_list.clear_files()
             self.preview.clear_preview()
             self.settings_panel.set_convert_enabled(False)
-            self.output_preview_cache.clear()  # NEW: Clear output preview cache
+
+            # Clear resize dimensions since no images exist
+            self.settings_panel.resize_widget.clear_current_image()
+            logger.debug("Resize dimensions cleared (all files removed)", source="MainWindow")
+
+            # Clear output preview cache
+            self.output_preview_cache.clear()
+            logger.info("Output preview cache cleared", source="MainWindow")
+
             self.status_bar.showMessage("Files cleared", 2000)
-            logger.debug("Output preview cache cleared", source="MainWindow")
+            logger.info("All files cleared from list", source="MainWindow")
 
     def _on_file_selected(self, image_file):
         """Handle file selection in list."""
@@ -545,24 +557,30 @@ class MainWindow(QMainWindow):
                 )
 
     def _generate_output_preview(self):
-        """Generate output preview in worker thread (with caching)."""
+        """Generate output preview with current settings."""
         selected_file = self.file_list.get_selected_file()
         if not selected_file:
-            logger.warning("No image selected for preview generation", source="MainWindow")
+            logger.warning("No file selected for output preview generation", source="MainWindow")
             return
 
-        if not self.current_settings:
-            logger.warning("No settings configured for preview generation", source="MainWindow")
-            return
+        settings = self.settings_panel.get_settings()
+        cache_key = self._get_output_preview_cache_key(selected_file.path, settings)
 
-        # Generate cache key
-        cache_key = self._get_output_preview_cache_key(
-            selected_file.path,
-            self.current_settings
-        )
+        # Build resize info string based on mode
+        if settings.resize_mode == ResizeMode.NONE:
+            resize_info = "No resize"
+        elif settings.resize_mode == ResizeMode.PERCENTAGE:
+            resize_info = f"Scale: {settings.resize_percentage}%"
+        elif settings.resize_mode == ResizeMode.FIT_TO_WIDTH:
+            resize_info = f"Fit Width: {settings.target_width_px}px"
+        elif settings.resize_mode == ResizeMode.FIT_TO_HEIGHT:
+            resize_info = f"Fit Height: {settings.target_height_px}px"
+        elif settings.resize_mode == ResizeMode.FIT_TO_DIMENSIONS:
+            resize_info = f"Fit Box: {settings.max_width_px}×{settings.max_height_px}px"
+        else:
+            resize_info = "Unknown"
 
-        # Check cache first
-        # Check cache first
+        # Check cache
         if cache_key in self.output_preview_cache:
             logger.info(
                 f"Output preview CACHE HIT: {selected_file.filename}",
@@ -571,11 +589,11 @@ class MainWindow(QMainWindow):
             cached_pixmap, cached_file_size = self.output_preview_cache[cache_key]
             self.preview.display_output_preview(cached_pixmap)
 
-            selected_file = self.file_list.get_selected_file()
+            # Update estimated size in UI
             if selected_file:
                 self.settings_panel.output_widget.update_original_size(selected_file.size_bytes)
+                self.settings_panel.output_widget.update_estimated_size(cached_file_size)
 
-            self.settings_panel.output_widget.update_estimated_size(cached_file_size)  # Update UI
             self.status_bar.showMessage(
                 f"✓ Output preview ready (cached) for {selected_file.filename}",
                 3000
@@ -585,16 +603,14 @@ class MainWindow(QMainWindow):
         # Cache miss - generate preview
         logger.info(
             f"Output preview CACHE MISS: Generating for {selected_file.filename} "
-            f"(Format: {self.current_settings.output_format.value}, "
-            f"Quality: {self.current_settings.quality}, "
-            f"Scale: {self.current_settings.resize_percentage}%)",
+            f"(Format: {settings.output_format.value}, Quality: {settings.quality}, {resize_info})",
             source="MainWindow"
         )
 
         self.preview.show_loading_overlay("Generating output preview...")
         self.status_bar.showMessage(f"Generating output preview for {selected_file.filename}...")
 
-        worker = OutputPreviewWorker(selected_file.path, self.current_settings)
+        worker = OutputPreviewWorker(selected_file.path, settings)
         worker.signals.finished.connect(self._on_output_preview_ready)
         worker.signals.error.connect(self._on_output_preview_error)
         self.threadpool.start(worker)
@@ -1002,9 +1018,22 @@ class MainWindow(QMainWindow):
 
     def _on_files_removed(self):
         """Handle files being removed from the list."""
-        # Clear preview to avoid ghosting effect
         self.preview.clear_preview()
         self.settings_panel.set_convert_enabled(False)
+
+        # Check if any images remain
+        if len(self.file_list.image_files) == 0:
+            # No images left - clear resize dimensions
+            self.settings_panel.resize_widget.clear_current_image()
+            logger.debug("Resize dimensions cleared (no images remain)", source="MainWindow")
+        else:
+            # Images remain - dimensions will update when next file is auto-selected
+            # (file list triggers file_selected signal for new selection)
+            logger.debug(
+                f"Files removed, {len(self.file_list.image_files)} images remain",
+                source="MainWindow"
+            )
+
         logger.debug("Files removed - preview cleared", source="MainWindow")
 
     def _get_output_preview_cache_key(self, file_path: Path, settings: ConversionSettings) -> tuple:
@@ -1027,7 +1056,12 @@ class MainWindow(QMainWindow):
             settings.output_format,
             settings.quality,
             settings.resize_mode,
-            settings.resize_percentage
+            settings.resize_percentage,
+            settings.target_width_px,
+            settings.target_height_px,
+            settings.max_width_px,
+            settings.max_height_px,
+            settings.allow_upscaling
         )
 
         return (file_path, settings_hash)

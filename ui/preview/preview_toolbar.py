@@ -94,7 +94,7 @@ class PreviewToolbar(QWidget):
         # Rotate left button
         self.rotate_left_btn = QToolButton()
         self.rotate_left_btn.setObjectName("toolButton")
-        self.rotate_left_btn.setText("↶")
+        self.rotate_left_btn.setIcon(QIcon("icons/rotate_left.svg"))
         self.rotate_left_btn.setToolTip("Rotate Left (90° CCW)")
         self.rotate_left_btn.setFixedSize(button_size)
         self.rotate_left_btn.clicked.connect(self.rotate_left_clicked.emit)
@@ -103,7 +103,7 @@ class PreviewToolbar(QWidget):
         # Rotate right button
         self.rotate_right_btn = QToolButton()
         self.rotate_right_btn.setObjectName("toolButton")
-        self.rotate_right_btn.setText("↷")
+        self.rotate_right_btn.setIcon(QIcon("icons/rotate_right.svg"))
         self.rotate_right_btn.setToolTip("Rotate Right (90° CW)")
         self.rotate_right_btn.setFixedSize(button_size)
         self.rotate_right_btn.clicked.connect(self.rotate_right_clicked.emit)
@@ -112,7 +112,7 @@ class PreviewToolbar(QWidget):
         # Fit to window button
         self.fit_btn = QToolButton()
         self.fit_btn.setObjectName("toolButton")
-        self.fit_btn.setText("⛶")
+        self.fit_btn.setIcon(QIcon("icons/center_focus.svg"))
         self.fit_btn.setToolTip("Fit to Window")
         self.fit_btn.setFixedSize(button_size)
         self.fit_btn.clicked.connect(self.fit_to_window_clicked.emit)
@@ -121,7 +121,7 @@ class PreviewToolbar(QWidget):
         # Metadata button
         self.metadata_btn = QToolButton()
         self.metadata_btn.setObjectName("toolButton")
-        self.metadata_btn.setText("ⓘ")
+        self.metadata_btn.setIcon(QIcon("icons/meta-info.svg"))
         self.metadata_btn.setToolTip("Show Metadata")
         self.metadata_btn.setFixedSize(button_size)
         self.metadata_btn.clicked.connect(self.show_metadata_clicked.emit)
