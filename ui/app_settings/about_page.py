@@ -185,13 +185,15 @@ class AboutPage(QWidget):
         github_btn.setIcon(QIcon(":/icons/info.svg"))
         github_btn.clicked.connect(lambda: self._open_url("https://github.com/Avaxerrr"))
 
+        """""
         portfolio_btn = QPushButton("Portfolio")
         portfolio_btn.setObjectName("linkButton")
         portfolio_btn.setIcon(QIcon(":/icons/info.svg"))
         portfolio_btn.clicked.connect(lambda: self._open_url("https://your-portfolio.com"))
+        """""
 
         links_layout.addWidget(github_btn)
-        links_layout.addWidget(portfolio_btn)
+        #links_layout.addWidget(portfolio_btn)
         links_layout.addStretch()
 
         creator_layout.addWidget(creator_name)

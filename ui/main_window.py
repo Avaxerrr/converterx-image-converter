@@ -709,6 +709,18 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """Override closeEvent to save window state before closing."""
         self._save_window_state()
+
+        # Manually close independent windows
+        if self.log_window is not None:
+            self.log_window.close()
+            self.log_window.deleteLater()
+            self.log_window = None
+
+        if self.batch_window is not None:
+            self.batch_window.close()
+            self.batch_window.deleteLater()
+            self.batch_window = None
+
         event.accept()
         logger.info("Application closing - window state saved", source="MainWindow")
 
