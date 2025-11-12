@@ -7,7 +7,7 @@ Handles up to N simultaneous conversions using existing ConversionWorker.
 
 from PySide6.QtCore import QObject, Signal, QThreadPool
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from models.image_file import ImageFile
@@ -36,13 +36,13 @@ class BatchProcessor(QObject):
     """
 
     # Signals
-    file_started = Signal(ImageFile, int, int)  # file, current_index, total
+    file_started = Signal(ImageFile, int, int, Path)  # file, current_index, total, output_path
     file_progress = Signal(ImageFile, int)  # file, progress (0-100)
     file_completed = Signal(ImageFile, Path, int)  # file, output_path, bytes_saved
     file_failed = Signal(ImageFile, str)  # file, error_message
     batch_finished = Signal(int, int, int)  # total, successful, failed
 
-    def __init__(self, max_concurrent: int = 4):  # FIXED: Added parameter with default
+    def __init__(self, max_concurrent: int = 4):
         """
         Initialize batch processor.
 
@@ -51,11 +51,11 @@ class BatchProcessor(QObject):
         """
         super().__init__()
 
-        # FIXED: Store parameter as instance variable
+        #  Store parameter as instance variable
         self.max_concurrent = max_concurrent
 
         # Batch state
-        self.file_queue: List[ImageFile] = []  # FIXED: Removed duplicate incorrect type
+        self.file_queue: List[ImageFile] = []  # Removed duplicate incorrect type
         self.active_workers: Dict[ImageFile, ConversionWorker] = {}
         self.completed_files: List[BatchFileResult] = []
         self.failed_files: List[BatchFileResult] = []
@@ -79,7 +79,6 @@ class BatchProcessor(QObject):
             self,
             files: List[ImageFile],
             settings: ConversionSettings
-            # REMOVED: output_folder parameter - it's now in settings.custom_output_folder
     ):
         """
         Start batch conversion of multiple files.
@@ -139,7 +138,7 @@ class BatchProcessor(QObject):
 
     def _start_initial_workers(self):
         """Start up to max_concurrent workers from the queue."""
-        workers_to_start = min(self.max_concurrent, len(self.file_queue))  # FIXED: Changed to self.max_concurrent
+        workers_to_start = min(self.max_concurrent, len(self.file_queue))
 
         for _ in range(workers_to_start):
             self._start_next_file()
@@ -174,15 +173,23 @@ class BatchProcessor(QObject):
         # Get next file
         image_file = self.file_queue.pop(0)
         self.current_index += 1
+
         try:
-            output_path = generate_output_path(image_file, self.settings_snapshot)
+            # Generate output path WITH batch index for sequential numbering
+            output_path = generate_output_path(
+                image_file,
+                self.settings_snapshot,
+                batch_index=self.current_index  # NEW: Pass sequential index
+            )
             logger.debug(f"Generated output path: {output_path}", "BatchProcessor")
         except Exception as e:
             # If path generation fails, mark as error and continue
-            logger.error(f"Failed to generate output path for {image_file.filename}: {e}", "BatchProcessor")
+            logger.error(
+                f"Failed to generate output path for {image_file.filename}: {e}",
+                "BatchProcessor"
+            )
             self._on_worker_error(image_file, f"Path generation failed: {e}")
             return
-        # ================================================================
 
         # Create worker
         worker = ConversionWorker(
@@ -199,10 +206,9 @@ class BatchProcessor(QObject):
         # Track active worker
         self.active_workers[image_file] = worker
 
-        # Emit started signal
-        self.file_started.emit(image_file, self.current_index, self.total_files)
+        # Emit started signal WITH output_path (MODIFIED)
+        self.file_started.emit(image_file, self.current_index, self.total_files, output_path)
 
-        # Enhanced logging with worker count
         logger.info(
             f"[{self.current_index}/{self.total_files}] Starting: {image_file.filename} "
             f"(Active workers: {len(self.active_workers)}/{self.max_concurrent})",
@@ -342,5 +348,5 @@ class BatchProcessor(QObject):
 
         # Start processing again if there are slots available
         while len(self.active_workers) < self.max_concurrent and len(
-                self.file_queue) > 0:  # FIXED: Changed to self.max_concurrent
+                self.file_queue) > 0:  # Changed to self.max_concurrent
             self._start_next_file()

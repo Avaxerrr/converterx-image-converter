@@ -282,18 +282,12 @@ class BatchWindow(QDialog):
             self.file_table.setCellWidget(row, 0, status_widget)
             status_item.setFlags(status_item.flags() & ~Qt.ItemIsSelectable)
 
-            # File name
-            display_name = self._compute_output_display_name(image_file)
-            name_item = QTableWidgetItem(display_name)
+            # File name - use original filename initially (will be updated when file starts)
+            name_item = QTableWidgetItem(image_file.filename)
             self.file_table.setItem(row, 1, name_item)
 
-            # tooltip with full output path for this file
-            try:
-                out_path = generate_output_path(image_file, self.settings_snapshot)
-                name_item.setToolTip(str(out_path))
-            except Exception:
-                # silently ignore tooltip if error occurs
-                pass
+            # Tooltip - leave empty for now (will be set when file starts)
+            name_item.setToolTip("Waiting...")
 
             # Progress bar
             progress_bar = QProgressBar()
@@ -325,8 +319,16 @@ class BatchWindow(QDialog):
         # Update status
         self._update_status_summary()
 
-    def update_file_started(self, image_file: ImageFile, current_index: int, total: int):
-        """Update file status to processing."""
+    def update_file_started(self, image_file: ImageFile, current_index: int, total: int, output_path: Path):
+        """
+        Update file status to processing.
+
+        Args:
+            image_file: The image file being processed
+            current_index: Sequential batch index (1-based)
+            total: Total number of files
+            output_path: The actual output path that will be used
+        """
         if image_file not in self.file_rows:
             return
 
@@ -335,6 +337,13 @@ class BatchWindow(QDialog):
         # Update status icon (using widget)
         status_widget = self._create_centered_icon_widget('processing')
         self.file_table.setCellWidget(row, 0, status_widget)
+
+        # Update filename to show actual output name
+        name_item = self.file_table.item(row, 1)
+        name_item.setText(output_path.name)  # Show the final output filename
+
+        # Update tooltip to show full path
+        name_item.setToolTip(str(output_path))
 
         # Scroll to current file
         self.file_table.scrollToItem(self.file_table.item(row, 1))

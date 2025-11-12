@@ -128,8 +128,7 @@ class OutputSettingsWidget(QWidget):
 
         # Estimated File Size Display
         self.estimated_size_label = QLabel("Est. Size: —")
-        self.estimated_size_label.setToolTip("SHow estimated file size based on current settings. Actual size may differ after conversion.")
-
+        self.estimated_size_label.setToolTip("Show estimated file size based on current settings. Actual size may differ after conversion.")
         self.estimated_size_label.setAlignment(QtCore.Qt.AlignCenter)
         self.estimated_size_label.setObjectName("estimated-size-label")
         layout.addWidget(self.estimated_size_label)
@@ -178,13 +177,36 @@ class OutputSettingsWidget(QWidget):
         filename_layout = QVBoxLayout(filename_group)
         filename_layout.setSpacing(6)
 
-        # 1) Add the toggle checkbox visibly inside the group
+        # ===== Base filename controls =====
+        self.base_name_original = QRadioButton("Use Original Filename")
+        self.base_name_original.setChecked(True)
+        self.base_name_original.setToolTip("Keep source image filename (default)")
+        filename_layout.addWidget(self.base_name_original)
+
+        # Custom rename option
+        rename_layout = QHBoxLayout()
+        self.base_name_custom = QRadioButton("Rename to:")
+        self.base_name_custom.setToolTip("Replace base filename for batch conversion")
+        self.base_name_custom.toggled.connect(self._on_base_name_mode_changed)
+        rename_layout.addWidget(self.base_name_custom)
+
+        self.base_name_input = QLineEdit()
+        self.base_name_input.setPlaceholderText("e.g., website-photo, product-image")
+        self.base_name_input.setEnabled(False)
+        self.base_name_input.textChanged.connect(lambda: self.settings_changed.emit())
+        rename_layout.addWidget(self.base_name_input, 1)
+        filename_layout.addLayout(rename_layout)
+
+        # Visual separator
+        filename_layout.addSpacing(8)
+
+        # Enable suffix checkbox
         self.enable_suffix_check = QCheckBox("Enable filename suffix")
         self.enable_suffix_check.setChecked(True)  # Default ON
         self.enable_suffix_check.setToolTip("Toggle adding suffix to converted filenames")
         filename_layout.addWidget(self.enable_suffix_check)
 
-        # 2) React to toggle: gray out pattern controls when disabled
+        # React to toggle: gray out pattern controls when disabled
         self.enable_suffix_check.stateChanged.connect(lambda: self._on_enable_suffix_toggled())
         self.enable_suffix_check.stateChanged.connect(lambda: self.settings_changed.emit())
 
@@ -195,7 +217,7 @@ class OutputSettingsWidget(QWidget):
         self.filename_template_combo.addItem("_converted", FilenameTemplate.CONVERTED)
         self.filename_template_combo.addItem("_[format]", FilenameTemplate.FORMAT)
         self.filename_template_combo.addItem("_Q[quality]", FilenameTemplate.QUALITY)
-        self.filename_template_combo.addItem("Custom...", FilenameTemplate.CUSTOM)  # enum
+        self.filename_template_combo.addItem("Custom...", FilenameTemplate.CUSTOM)
         self.filename_template_combo.currentIndexChanged.connect(self._on_template_changed)
 
         template_layout.addWidget(self.filename_template_combo, 1)
@@ -292,6 +314,12 @@ class OutputSettingsWidget(QWidget):
 
         self.settings_changed.emit()
 
+    def _on_base_name_mode_changed(self):
+        """Handle base name mode toggle - enable/disable text input."""
+        is_custom = self.base_name_custom.isChecked()
+        self.base_name_input.setEnabled(is_custom)
+        self.settings_changed.emit()
+
     def browse_output_folder(self):
         """Open folder browser dialog."""
         folder = QFileDialog.getExistingDirectory(
@@ -313,11 +341,12 @@ class OutputSettingsWidget(QWidget):
             'keep_metadata': self.metadata_check.isChecked(),
             'png_compress_level': self.png_level_spin.value(),
             'target_size_kb': None,
-            # FIELDS
+            # OUTPUT FIELDS
             'output_location_mode': self._get_output_mode(),
             'custom_output_folder': self.output_folder,
             'filename_template': self.filename_template_combo.currentData(),
             'custom_suffix': self.custom_suffix_input.text().strip(),
+            'custom_base_name': self.base_name_input.text().strip() if self.base_name_custom.isChecked() else "",
             'auto_increment': self.auto_increment_check.isChecked(),
             'enable_filename_suffix': self.enable_suffix_check.isChecked()
         }
@@ -359,7 +388,6 @@ class OutputSettingsWidget(QWidget):
         """
         if size_bytes > 0:
             parts = []
-            # Order and wording exactly as requested
             parts.append(f"Est. size: {self._format_size(size_bytes)}")
             if self._original_size_bytes is not None:
                 parts.append(f"Orig. size: {self._format_size(self._original_size_bytes)}")

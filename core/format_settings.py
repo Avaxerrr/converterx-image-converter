@@ -100,7 +100,8 @@ class ConversionSettings:
     output_location_mode: OutputLocationMode = OutputLocationMode.CUSTOM_FOLDER
     custom_output_folder: Path = Path.home() / "Downloads" / "Converted"
     filename_template: FilenameTemplate = FilenameTemplate.CONVERTED
-    custom_suffix: str = ""  # Custom suffix for CUSTOM template
+    custom_suffix: str = ""
+    custom_base_name: str = ""
     auto_increment: bool = True
 
     def to_pillow_kwargs(self, quality_override: Optional[int] = None) -> Dict[str, Any]:

@@ -813,7 +813,9 @@ class MainWindow(QMainWindow):
     def _connect_batch_signals(self):
         """Connect BatchProcessor signals to BatchWindow and MainWindow."""
         # Processor → Window
-        self.batch_processor.file_started.connect(self.batch_window.update_file_started)
+        self.batch_processor.file_started.connect(
+            lambda file, idx, total, output_path: self.batch_window.update_file_started(file, idx, total, output_path)
+        )
         self.batch_processor.file_progress.connect(self.batch_window.update_file_progress)
         self.batch_processor.file_completed.connect(self.batch_window.update_file_completed)
         self.batch_processor.file_failed.connect(self.batch_window.update_file_failed)

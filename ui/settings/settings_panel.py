@@ -182,6 +182,7 @@ class SettingsPanel(QWidget):
             filename_template=output_settings["filename_template"],
             enable_filename_suffix=output_settings["enable_filename_suffix"],
             custom_suffix=output_settings["custom_suffix"],
+            custom_base_name=output_settings["custom_base_name"],
             auto_increment=output_settings["auto_increment"],
         )
 
