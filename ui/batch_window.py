@@ -8,7 +8,7 @@ Hidden (not destroyed) when closed, can be reopened with Ctrl+B.
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QProgressBar,
-    QHeaderView, QAbstractItemView, QFrame
+    QHeaderView, QAbstractItemView, QFrame, QWidget
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QSize
 from PySide6.QtGui import QColor, QIcon
@@ -69,7 +69,7 @@ class BatchWindow(QDialog):
 
     def _get_status_icon(self, icon_name: str) -> QIcon:
         """
-        Get QIcon from icons folder.
+        Get QIcon from QRC resources.
 
         Args:
             icon_name: Name of icon (e.g., 'pending', 'processing', 'success', 'error')
@@ -77,35 +77,28 @@ class BatchWindow(QDialog):
         Returns:
             QIcon object or empty QIcon if not found
         """
-        import os
-        from pathlib import Path
-
-        # Map icon names to actual files in your icons folder
+        # Map icon names to QRC resource paths
         icon_map = {
-            'pending': 'schedule.svg',
-            'processing': 'cycle.svg',
-            'success': 'done_outline.svg',
-            'error': 'warning.svg',
-            'settings': 'settings.svg',
-            'folder': 'folder.svg',
+            'pending': ':/icons/pending-icon.svg',
+            'processing': ':/icons/convert-image.svg',
+            'success': ':/icons/done_outline.svg',
+            'error': ':/icons/warning.svg',
+            'settings': ':/icons/settings.svg',
+            'folder': ':/icons/folder.svg',
         }
 
-        icon_filename = icon_map.get(icon_name, '')
-        if not icon_filename:
+        qrc_path = icon_map.get(icon_name, '')
+        if not qrc_path:
             return QIcon()
 
-        # Get absolute path from project root
-        # Assumes this file is in ui/ folder and icons/ is at project root
-        current_file = Path(__file__)  # batch_window.py location
-        project_root = current_file.parent.parent  # Go up to project root
-        icon_path = project_root / 'icons' / icon_filename
+        icon = QIcon(qrc_path)
 
-        if icon_path.exists():
-            return QIcon(str(icon_path))
-        else:
-            # Debug: print the path we're trying to use
-            print(f"Icon not found: {icon_path}")
+        # Check if icon loaded successfully
+        if icon.isNull():
+            print(f"Warning: Icon '{icon_name}' not found in QRC: {qrc_path}")
             return QIcon()
+
+        return icon
 
     def _setup_ui(self):
         """Build the batch window UI."""
@@ -215,7 +208,9 @@ class BatchWindow(QDialog):
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
-        table.setIconSize(QSize(20, 20))  # Add icon size
+        table.setIconSize(QSize(20, 20))
+
+        table.setFocusPolicy(Qt.NoFocus)
 
         return table
 
@@ -283,9 +278,9 @@ class BatchWindow(QDialog):
 
             # Status icon
             status_item = QTableWidgetItem()
-            status_item.setIcon(self._get_status_icon('pending'))
-            status_item.setTextAlignment(Qt.AlignCenter)
-            self.file_table.setItem(row, 0, status_item)
+            status_widget = self._create_centered_icon_widget('pending')
+            self.file_table.setCellWidget(row, 0, status_widget)
+            status_item.setFlags(status_item.flags() & ~Qt.ItemIsSelectable)
 
             # File name
             display_name = self._compute_output_display_name(image_file)
@@ -331,19 +326,18 @@ class BatchWindow(QDialog):
         self._update_status_summary()
 
     def update_file_started(self, image_file: ImageFile, current_index: int, total: int):
-        """Update file status to 'processing'."""
+        """Update file status to processing."""
         if image_file not in self.file_rows:
             return
 
         row = self.file_rows[image_file]
 
-        # Update status icon
-        status_item = self.file_table.item(row, 0)
-        status_item.setIcon(self._get_status_icon('processing'))
-        status_item.setText("")  # Clear any text
+        # Update status icon (using widget)
+        status_widget = self._create_centered_icon_widget('processing')
+        self.file_table.setCellWidget(row, 0, status_widget)
 
         # Scroll to current file
-        self.file_table.scrollToItem(status_item)
+        self.file_table.scrollToItem(self.file_table.item(row, 1))
 
     def update_file_progress(self, image_file: ImageFile, progress: int):
         """Update file progress bar."""
@@ -370,9 +364,8 @@ class BatchWindow(QDialog):
         row = self.file_rows[image_file]
 
         # Update status icon
-        status_item = self.file_table.item(row, 0)
-        status_item.setIcon(self._get_status_icon('success'))
-        status_item.setText("")  # Clear any text
+        status_widget = self._create_centered_icon_widget('success')
+        self.file_table.setCellWidget(row, 0, status_widget)
 
         # Update progress bar
         progress_bar = self.file_table.cellWidget(row, 2)
@@ -435,9 +428,8 @@ class BatchWindow(QDialog):
         row = self.file_rows[image_file]
 
         # Update status icon
-        status_item = self.file_table.item(row, 0)
-        status_item.setIcon(self._get_status_icon('error'))
-        status_item.setText("")  # Clear any text
+        status_widget = self._create_centered_icon_widget('error')
+        self.file_table.setCellWidget(row, 0, status_widget)
 
         # Update size column with "Failed"
         size_item = self.file_table.item(row, 3)
@@ -752,3 +744,27 @@ class BatchWindow(QDialog):
         except Exception as e:
             logger.warning(f"[BatchWindow] Unable to compute display filename: {e}")
         return image_file.filename
+
+    def _create_centered_icon_widget(self, icon_name: str) -> QWidget:
+        """
+        Create a widget with centered icon for table cell.
+
+        Args:
+            icon_name: Icon name ('pending', 'processing', 'success', 'error')
+
+        Returns:
+            QWidget containing centered icon
+        """
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignCenter)
+
+        icon_label = QLabel()
+        icon_label.setPixmap(self._get_status_icon(icon_name).pixmap(QSize(20, 20)))
+        icon_label.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(icon_label)
+        widget.setLayout(layout)
+
+        return widget

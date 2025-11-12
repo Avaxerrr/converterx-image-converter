@@ -94,12 +94,12 @@ class FileListWidget(QWidget):
 
         self.add_btn = QPushButton("Add files")
         self.add_btn.setObjectName("addButton")
-        self.add_btn.setIcon(QIcon("icons/add-image.svg"))
+        self.add_btn.setIcon(QIcon(":/icons/add-image.svg"))
         self.add_btn.setMinimumHeight(32)
 
         self.clear_btn = QPushButton("Clear files")
         self.clear_btn.setObjectName("clearButton")
-        self.clear_btn.setIcon(QIcon("icons/clear-images.svg"))
+        self.clear_btn.setIcon(QIcon(":/icons/clear-images.svg"))
         self.clear_btn.setMinimumHeight(32)
 
         button_layout.addWidget(self.add_btn)

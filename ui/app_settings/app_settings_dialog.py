@@ -3,12 +3,11 @@ App Settings Dialog
 
 Main dialog window with sidebar navigation for app settings.
 Takes AppSettingsController via dependency injection (constructor parameter).
-
 """
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QListWidget,
-    QStackedWidget, QPushButton, QMessageBox, QScrollArea
+    QStackedWidget, QPushButton, QMessageBox, QScrollArea, QListWidgetItem
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut, QIcon
@@ -110,15 +109,13 @@ class AppSettingsDialog(QDialog):
         self.cancel_btn.setObjectName("cancelBtn")
         self.cancel_btn.clicked.connect(self.reject)
 
-        # CHANGED: Apply button now stays open with confirmation
         self.apply_btn = QPushButton("Apply")
         self.apply_btn.setObjectName("applyBtn")
         self.apply_btn.clicked.connect(self._on_apply)
 
-        # NEW: OK button saves and closes
         self.ok_btn = QPushButton("OK")
         self.ok_btn.setObjectName("okBtn")
-        self.ok_btn.setDefault(True)  # Makes it trigger on Enter
+        self.ok_btn.setDefault(True)
         self.ok_btn.clicked.connect(self._on_ok)
 
         # Add buttons to layout
@@ -135,13 +132,28 @@ class AppSettingsDialog(QDialog):
         from .performance_page import PerformanceSettingsPage
         from .preview_page import PreviewSettingsPage
         from .defaults_page import DefaultSettingsPage
-        from PySide6.QtWidgets import QScrollArea, QListWidgetItem
-        from PySide6.QtGui import QIcon
+        from PySide6.QtWidgets import QScrollArea
 
-        # Create pages and STORE REFERENCES
+        # Import documentation pages
+        from .about_page import AboutPage
+        from .base_doc_page import QuickGuidePage, FeaturesPage
+
+        # Create settings pages and STORE REFERENCES
         self.performance_page = PerformanceSettingsPage(self.controller)
         self.preview_page = PreviewSettingsPage(self.controller)
         self.defaults_page = DefaultSettingsPage(self.controller)
+
+        # Create documentation pages (read-only, no settings)
+        self.about_page = AboutPage(self.controller)
+        self.quick_guide_page = QuickGuidePage(self.controller)
+        self.features_page = FeaturesPage(self.controller)
+
+        # Store which pages have settings (for save operations)
+        self.settings_pages = [
+            self.performance_page,
+            self.preview_page,
+            self.defaults_page
+        ]
 
         # Helper function to wrap page in scroll area
         def create_scrollable_page(page_widget):
@@ -154,26 +166,47 @@ class AppSettingsDialog(QDialog):
             scroll.setFrameShape(QScrollArea.NoFrame)
             return scroll
 
-        # Wrap each page individually
+        # Wrap each settings page
         performance_scroll = create_scrollable_page(self.performance_page)
         preview_scroll = create_scrollable_page(self.preview_page)
         defaults_scroll = create_scrollable_page(self.defaults_page)
 
-        # Define pages with icons and titles
+        # Define all pages with icons and titles
+        # (is_header, title, page_widget, icon_path)
         pages = [
-            ("Performance", performance_scroll, "icons/performance-settings.svg"),
-            ("Preview", preview_scroll, "icons/preview-settings.svg"),
-            ("Defaults", defaults_scroll, "icons/default-settings.svg")
+            # Settings Section
+            (True, "SETTINGS", None, None),
+            (False, "Performance", performance_scroll, ":/icons/performance-settings.svg"),
+            (False, "Preview", preview_scroll, ":/icons/preview-settings.svg"),
+            (False, "Defaults", defaults_scroll, ":/icons/default-settings.svg"),
+
+            # About & Documentation Section
+            (True, "ABOUT & DOCS", None, None),
+            (False, "About", self.about_page, ":/icons/about.svg"),
+            (False, "Quick Guide", self.quick_guide_page, ":/icons/quick-guide.svg"),
+            (False, "Features", self.features_page, ":/icons/features.svg"),
         ]
 
         # Add to UI
-        for title, page_widget, icon_path in pages:
-            item = QListWidgetItem(QIcon(icon_path), title)
-            self.sidebar.addItem(item)
-            self.content_stack.addWidget(page_widget)
+        for is_header, title, page_widget, icon_path in pages:
+            if is_header:
+                # Create section header
+                item = QListWidgetItem(title)
+                item.setFlags(Qt.ItemFlag.NoItemFlags)  # Non-selectable
+                item.setForeground(Qt.GlobalColor.darkGray)
+                font = item.font()
+                font.setPointSize(9)
+                font.setBold(True)
+                item.setFont(font)
+                self.sidebar.addItem(item)
+            else:
+                # Create regular page item
+                item = QListWidgetItem(QIcon(icon_path), title)
+                self.sidebar.addItem(item)
+                self.content_stack.addWidget(page_widget)
 
-        # Select first page
-        self.sidebar.setCurrentRow(0)
+        # Select first actual page (index 1, skip "SETTINGS" header)
+        self.sidebar.setCurrentRow(1)
 
     def _setup_shortcuts(self) -> None:
         """Setup keyboard shortcuts for dialog."""
@@ -189,33 +222,43 @@ class AppSettingsDialog(QDialog):
         """
         Handle sidebar selection change.
 
+        Accounts for section headers which don't have corresponding pages.
+
         Args:
-            index: Index of selected sidebar item
+            index: Index of selected sidebar item in sidebar
         """
-        self.content_stack.setCurrentIndex(index)
+        # Section headers are at indices 0 (SETTINGS) and 4 (ABOUT & DOCS)
+        # We need to map sidebar index to content_stack index
+
+        # Calculate actual page index by subtracting headers before this item
+        page_index = index
+        if index > 0:  # After "SETTINGS" header
+            page_index -= 1
+        if index > 4:  # After "ABOUT & DOCS" header
+            page_index -= 1
+
+        if page_index >= 0:
+            self.content_stack.setCurrentIndex(page_index)
 
     def _load_all_pages(self) -> None:
-        """Load current settings from controller into all pages."""
-        self.performance_page.load_from_controller()
-        self.preview_page.load_from_controller()
-        self.defaults_page.load_from_controller()
+        """Load current settings from controller into settings pages only."""
+        for page in self.settings_pages:
+            page.load_from_controller()
 
     def _save_all_pages(self) -> bool:
         """
-        Save all pages to controller.
+        Save all settings pages to controller.
+        Documentation pages don't have settings to save.
 
         Returns:
             True if successful, False if validation failed
         """
         try:
-            # Save each page (validation happens in page.save_to_controller())
-            self.performance_page.save_to_controller()
-            self.preview_page.save_to_controller()
-            self.defaults_page.save_to_controller()
+            for page in self.settings_pages:
+                page.save_to_controller()
             return True
 
         except ValueError as e:
-            # Validation failed - show error
             QMessageBox.warning(
                 self,
                 "Invalid Setting",
@@ -225,13 +268,8 @@ class AppSettingsDialog(QDialog):
             return False
 
     def _on_apply(self) -> None:
-        """
-        CHANGED: Save settings but keep dialog open with confirmation.
-
-        This allows users to apply settings and see results without closing dialog.
-        """
+        """Save settings but keep dialog open with confirmation."""
         if self._save_all_pages():
-            # Show confirmation that settings were applied
             QMessageBox.information(
                 self,
                 "Settings Applied",
@@ -240,20 +278,14 @@ class AppSettingsDialog(QDialog):
             )
 
     def _on_ok(self) -> None:
-        """
-        NEW: Save settings and close dialog with Accepted.
-
-        This is the traditional "OK" behavior - save and exit.
-        """
+        """Save settings and close dialog with Accepted."""
         if self._save_all_pages():
-            # All saved successfully - close with Accepted
             self.accept()
 
     def _on_restore_defaults(self) -> None:
         """
         Confirm and reset all settings to defaults.
-
-        Shows confirmation dialog before resetting.
+        Only affects settings pages, not documentation.
         """
         reply = QMessageBox.question(
             self,
@@ -264,17 +296,13 @@ class AppSettingsDialog(QDialog):
             "• Preview settings\n"
             "• Default conversion settings",
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No  # Default to No for safety
+            QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
-            # Reset controller (this emits signals)
             self.controller.reset_to_defaults()
-
-            # Reload all pages to show defaults
             self._load_all_pages()
 
-            # Show confirmation
             QMessageBox.information(
                 self,
                 "Defaults Restored",

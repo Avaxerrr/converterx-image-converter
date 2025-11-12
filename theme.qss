@@ -221,7 +221,7 @@ QSpinBox::up-button:pressed {
 
 /* Up arrow icon */
 QSpinBox::up-arrow {
-    image: url(icons/arrow-up-white.png);
+    image: url(:/icons/arrow-up-white.png);
     width: 10px;
     height: 10px;
 }
@@ -250,7 +250,7 @@ QSpinBox::down-button:pressed {
 
 /* Down arrow icon */
 QSpinBox::down-arrow {
-    image: url(icons/arrow-down-white.png);
+    image: url(:/icons/arrow-down-white.png);
     width: 10px;
     height: 10px;
 }
@@ -326,7 +326,7 @@ QComboBox::drop-down:hover {
 
 /* Dropdown arrow icon */
 QComboBox::down-arrow {
-    image: url(icons/arrow-up-white.png);
+    image: url(:/icons/arrow-up-white.png);
     width: 10px;
     height: 10px;
 }
@@ -390,20 +390,20 @@ QGroupBox::title {
    MODERN SPLITTER HANDLE
    ============================================ */
 QSplitter::handle {
-    background-color: transparent;  /* ✅ Transparent instead of visible */
+    background-color: transparent;
     width: 8px;
     height: 8px;
 }
 
 /* Vertical splitter (between columns) */
 QSplitter::handle:vertical {
-    image: url(icons/3-dots.png);  /* ✅ Custom icon */
+    image: url(:/icons/3-dots.png);
     width: 8px;
     background-color: transparent;
 }
 
 QSplitter::handle:vertical:hover {
-    background-color: rgba(0, 122, 204, 0.3);  /* ✅ Subtle blue highlight */
+    background-color: rgba(0, 122, 204, 0.3);
 }
 
 QSplitter::handle:vertical:pressed {
@@ -412,7 +412,7 @@ QSplitter::handle:vertical:pressed {
 
 /* Horizontal splitter (if you have any) */
 QSplitter::handle:horizontal {
-    image: url(icons/3-dots.png);
+    image: url(:/icons/3-dots.png);
     height: 8px;
     background-color: transparent;
 }

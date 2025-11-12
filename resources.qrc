@@ -1,0 +1,42 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/theme">
+        <file>theme.qss</file>
+    </qresource>
+
+    <qresource prefix="/">
+        <!-- App Icon -->
+        <file>icons/app_icon.png</file>
+
+        <!-- UI Icons -->
+        <file>icons/3-dots.png</file>
+        <file>icons/add-image.svg</file>
+        <file>icons/arrow-down-white.png</file>
+        <file>icons/arrow-up-white.png</file>
+        <file>icons/center_focus.svg</file>
+        <file>icons/cycle.svg</file>
+        <file>icons/default-settings.svg</file>
+        <file>icons/clear-images.svg</file>
+        <file>icons/done_outline.svg</file>
+        <file>icons/hd-preview.svg</file>
+        <file>icons/features.svg</file>
+        <file>icons/quick-guide.svg</file>
+        <file>icons/about.svg</file>
+        <file>icons/pending-icon.svg</file>
+        <file>icons/convert-image.svg</file>
+        <file>icons/meta-info.svg</file>
+        <file>icons/performance-settings.svg</file>
+        <file>icons/preview-settings.svg</file>
+        <file>icons/preview.svg</file>
+        <file>icons/progress.svg</file>
+        <file>icons/rotate_left.svg</file>
+        <file>icons/rotate_right.svg</file>
+        <file>icons/schedule.svg</file>
+        <file>icons/settings.svg</file>
+        <file>icons/warning.svg</file>
+    </qresource>
+
+    <qresource prefix="/">
+        <file>fonts/Inter-VariableFont_opsz,wght.ttf</file>
+    </qresource>
+</RCC>

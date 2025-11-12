@@ -72,14 +72,14 @@ class SettingsPanel(QWidget):
         # Convert button
         self.convert_btn = QPushButton("Convert Selected")
         self.convert_btn.setObjectName("convert-button")
-        self.convert_btn.setIcon(QIcon("icons/convert-image.svg"))
+        self.convert_btn.setIcon(QIcon(":/icons/convert-image.svg"))
         self.convert_btn.clicked.connect(self.convert_requested.emit)
         self.convert_btn.setEnabled(False)
 
         # App Settings button (icon only)
         self.app_settings_btn = QPushButton()
         self.app_settings_btn.setObjectName("app-settings-button")
-        self.app_settings_btn.setIcon(QIcon("icons/settings.svg"))
+        self.app_settings_btn.setIcon(QIcon(":/icons/settings.svg"))
         self.app_settings_btn.setToolTip("App Settings")
         self.app_settings_btn.clicked.connect(self.app_settings_requested.emit)
 

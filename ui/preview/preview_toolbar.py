@@ -3,9 +3,8 @@ Floating toolbar for preview controls.
 """
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QToolButton
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QFile
 from PySide6.QtGui import QIcon
-from pathlib import Path
 from .preview_types import PreviewMode
 from utils.logger import logger
 
@@ -40,32 +39,33 @@ class PreviewToolbar(QWidget):
         toolbar_layout.setSpacing(4)
 
         button_size = QSize(32, 32)
+        icon_size = QSize(16, 16)
 
         # === HD/Preview Toggle Button (LEFT SIDE) ===
         self.hd_toggle_btn = QToolButton()
-        self.hd_toggle_btn.setObjectName("hdToggleButton")  # Special objectName for styling
+        self.hd_toggle_btn.setObjectName("hdToggleButton")
         self.hd_toggle_btn.setToolTip("Show the full resolution of the image")
         self.hd_toggle_btn.setFixedSize(button_size)
         self.hd_toggle_btn.clicked.connect(self._toggle_preview_mode)
         self.hd_toggle_btn.setEnabled(False)
-        self.hd_toggle_btn.setCheckable(True)  # Make it a toggle button
-        self.hd_toggle_btn.setChecked(False)   # Start unchecked (Preview mode)
+        self.hd_toggle_btn.setCheckable(True)
+        self.hd_toggle_btn.setChecked(False)
 
-        # Try to load icon
-        icon_path = Path("icons/hd-preview.svg")
-        if icon_path.exists():
-            self.hd_toggle_btn.setIcon(QIcon(str(icon_path)))
-            self.hd_toggle_btn.setIconSize(QSize(16, 16))
+        # Load HD icon from QRC (no need to check existence)
+        hd_icon = QIcon(":/icons/hd-preview.svg")
+        if not hd_icon.isNull():
+            self.hd_toggle_btn.setIcon(hd_icon)
+            self.hd_toggle_btn.setIconSize(icon_size)
+            logger.debug("HD preview icon loaded", "PreviewToolbar")
         else:
             self.hd_toggle_btn.setText("HD")  # Fallback text
-            logger.warning(f"HD preview icon not found: {icon_path}", "PreviewToolbar")
+            logger.warning("HD preview icon not found in QRC", "PreviewToolbar")
 
         toolbar_layout.addWidget(self.hd_toggle_btn)
 
         # === OUTPUT PREVIEW Toggle Button ===
         self.output_preview_btn = QToolButton()
         self.output_preview_btn.setObjectName("outputPreviewButton")
-        # More detailed tooltip
         self.output_preview_btn.setToolTip(
             "Toggle Output Preview (shows the final image with applicable settings)\n\n"
             "Applied in preview: Quality, Scale (%), PNG compression, Lossless mode\n"
@@ -74,18 +74,18 @@ class PreviewToolbar(QWidget):
         self.output_preview_btn.setFixedSize(button_size)
         self.output_preview_btn.clicked.connect(self._on_output_preview_clicked)
         self.output_preview_btn.setEnabled(False)
-        self.output_preview_btn.setCheckable(True)  # Make it a toggle button
-        self.output_preview_btn.setChecked(False)  # Start unchecked
+        self.output_preview_btn.setCheckable(True)
+        self.output_preview_btn.setChecked(False)
 
-        # Try to load icon
-        output_icon_path = Path("icons/preview.svg")
-        if output_icon_path.exists():
-            self.output_preview_btn.setIcon(QIcon(str(output_icon_path)))
-            self.output_preview_btn.setIconSize(QSize(16, 16))
-            logger.debug(f"Output preview icon loaded: {output_icon_path}", "PreviewToolbar")
+        # Load preview icon from QRC (no need to check existence)
+        preview_icon = QIcon(":/icons/preview.svg")
+        if not preview_icon.isNull():
+            self.output_preview_btn.setIcon(preview_icon)
+            self.output_preview_btn.setIconSize(icon_size)
+            logger.debug("Output preview icon loaded", "PreviewToolbar")
         else:
             self.output_preview_btn.setText("OUT")  # Fallback text
-            logger.warning(f"Output preview icon not found: {output_icon_path}", "PreviewToolbar")
+            logger.warning("Output preview icon not found in QRC", "PreviewToolbar")
 
         toolbar_layout.addWidget(self.output_preview_btn)
 
@@ -94,7 +94,8 @@ class PreviewToolbar(QWidget):
         # Rotate left button
         self.rotate_left_btn = QToolButton()
         self.rotate_left_btn.setObjectName("toolButton")
-        self.rotate_left_btn.setIcon(QIcon("icons/rotate_left.svg"))
+        self.rotate_left_btn.setIcon(QIcon(":/icons/rotate_left.svg"))
+        self.rotate_left_btn.setIconSize(icon_size)
         self.rotate_left_btn.setToolTip("Rotate Left (90° CCW)")
         self.rotate_left_btn.setFixedSize(button_size)
         self.rotate_left_btn.clicked.connect(self.rotate_left_clicked.emit)
@@ -103,7 +104,8 @@ class PreviewToolbar(QWidget):
         # Rotate right button
         self.rotate_right_btn = QToolButton()
         self.rotate_right_btn.setObjectName("toolButton")
-        self.rotate_right_btn.setIcon(QIcon("icons/rotate_right.svg"))
+        self.rotate_right_btn.setIcon(QIcon(":/icons/rotate_right.svg"))
+        self.rotate_right_btn.setIconSize(icon_size)
         self.rotate_right_btn.setToolTip("Rotate Right (90° CW)")
         self.rotate_right_btn.setFixedSize(button_size)
         self.rotate_right_btn.clicked.connect(self.rotate_right_clicked.emit)
@@ -112,7 +114,8 @@ class PreviewToolbar(QWidget):
         # Fit to window button
         self.fit_btn = QToolButton()
         self.fit_btn.setObjectName("toolButton")
-        self.fit_btn.setIcon(QIcon("icons/center_focus.svg"))
+        self.fit_btn.setIcon(QIcon(":/icons/center_focus.svg"))
+        self.fit_btn.setIconSize(icon_size)
         self.fit_btn.setToolTip("Fit to Window")
         self.fit_btn.setFixedSize(button_size)
         self.fit_btn.clicked.connect(self.fit_to_window_clicked.emit)
@@ -121,7 +124,8 @@ class PreviewToolbar(QWidget):
         # Metadata button
         self.metadata_btn = QToolButton()
         self.metadata_btn.setObjectName("toolButton")
-        self.metadata_btn.setIcon(QIcon("icons/meta-info.svg"))
+        self.metadata_btn.setIcon(QIcon(":/icons/meta-info.svg"))
+        self.metadata_btn.setIconSize(icon_size)
         self.metadata_btn.setToolTip("Show Metadata")
         self.metadata_btn.setFixedSize(button_size)
         self.metadata_btn.clicked.connect(self.show_metadata_clicked.emit)
@@ -182,26 +186,30 @@ class PreviewToolbar(QWidget):
     def enable_buttons(self, enabled: bool):
         """Enable or disable all toolbar buttons."""
         self.hd_toggle_btn.setEnabled(enabled)
-        self.output_preview_btn.setEnabled(enabled)  # Enable/disable output preview button
+        self.output_preview_btn.setEnabled(enabled)
         self.rotate_left_btn.setEnabled(enabled)
         self.rotate_right_btn.setEnabled(enabled)
         self.fit_btn.setEnabled(enabled)
         self.metadata_btn.setEnabled(enabled)
 
     def set_icons(self, rotate_left: str, rotate_right: str, fit_window: str, metadata: str):
-        """Set custom icons for toolbar buttons (excluding HD toggle which uses fixed icon)."""
-        if Path(rotate_left).exists():
-            self.rotate_left_btn.setIcon(QIcon(rotate_left))
-            self.rotate_left_btn.setText("")
+        """
+        Set custom icons for toolbar buttons (excluding HD toggle which uses fixed icon).
+        Note: This method is for backwards compatibility if needed, but QRC paths should be used directly.
+        """
+        # For QRC resources, directly create QIcon
+        rotate_left_icon = QIcon(rotate_left)
+        if not rotate_left_icon.isNull():
+            self.rotate_left_btn.setIcon(rotate_left_icon)
 
-        if Path(rotate_right).exists():
-            self.rotate_right_btn.setIcon(QIcon(rotate_right))
-            self.rotate_right_btn.setText("")
+        rotate_right_icon = QIcon(rotate_right)
+        if not rotate_right_icon.isNull():
+            self.rotate_right_btn.setIcon(rotate_right_icon)
 
-        if Path(fit_window).exists():
-            self.fit_btn.setIcon(QIcon(fit_window))
-            self.fit_btn.setText("")
+        fit_window_icon = QIcon(fit_window)
+        if not fit_window_icon.isNull():
+            self.fit_btn.setIcon(fit_window_icon)
 
-        if Path(metadata).exists():
-            self.metadata_btn.setIcon(QIcon(metadata))
-            self.metadata_btn.setText("")
+        metadata_icon = QIcon(metadata)
+        if not metadata_icon.isNull():
+            self.metadata_btn.setIcon(metadata_icon)

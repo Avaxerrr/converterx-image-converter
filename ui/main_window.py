@@ -480,7 +480,7 @@ class MainWindow(QMainWindow):
     def _toggle_log_window(self):
         """Show/hide log window."""
         if self.log_window is None:
-            self.log_window = LogWindow(self)
+            self.log_window = LogWindow(None)
             logger.info("Log window opened", source="MainWindow")
 
         # Toggle visibility
@@ -855,7 +855,7 @@ class MainWindow(QMainWindow):
     def _toggle_batch_window(self):
         """Toggle batch window visibility (Ctrl+B handler)."""
         if self.batch_window is None:
-            self.batch_window = BatchWindow(self)
+            self.batch_window = BatchWindow(None)
             logger.debug("Batch window created via Ctrl+B shortcut", "MainWindow")
 
         if self.batch_window.isVisible():
