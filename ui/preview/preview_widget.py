@@ -129,11 +129,6 @@ class PreviewWidget(QWidget):
             self.toolbar.move(x, y)
             self.toolbar.raise_()
 
-            logger.debug(
-                f"Toolbar positioned: x={x}, y={y} (widget_width={self.width()}, toolbar_width={toolbar_width})",
-                source="PreviewWidget"
-            )
-
     def resizeEvent(self, event):
         """Handle widget resize - update overlay geometry."""
         super().resizeEvent(event)

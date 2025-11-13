@@ -121,7 +121,7 @@ class ConversionSettings:
     gif_dithering: str = "floyd"  # "floyd", "none"
 
     # ICO settings
-    ico_size: int = 256  # Square dimension (16-512)
+    ico_size: int = 256  # Square dimension
     ico_force_square: str = "pad"  # "pad", "crop"
 
     # BMP settings (none needed - uncompressed format)

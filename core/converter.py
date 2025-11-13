@@ -50,7 +50,13 @@ class ImageConverter:
 
                 # Normal quality-based compression
                 save_kwargs = settings.to_pillow_kwargs()
-                img.save(output_path, **save_kwargs)
+
+                # Special handling for ICO: Save with explicit size list
+                if settings.output_format == ImageFormat.ICO:
+                    current_size = img.size[0]  # Image is square at this point
+                    img.save(output_path, format='ICO', sizes=[(current_size, current_size)])
+                else:
+                    img.save(output_path, **save_kwargs)
 
             output_size = output_path.stat().st_size
             elapsed = time.time() - start_time
@@ -305,10 +311,13 @@ class ImageConverter:
         # TIFF format preparation
         # ==========================================
         elif settings.output_format == ImageFormat.TIFF:
-            # TIFF supports RGBA natively, no conversion needed
-            logger.log(f"TIFF format: No conversion needed (mode={img.mode})", LogLevel.DEBUG, "Converter")
-            # Pass through as-is
-            return img
+            # Convert palette/indexed images to RGB for JPEG compression
+            if settings.tiff_compression == 'jpeg' and img.mode in ('P', 'PA', 'L', 'LA'):
+                # JPEG compression in TIFF only supports RGB/RGBA, not palette
+                if img.mode in ('PA', 'LA'):
+                    img = img.convert('RGBA')
+                else:
+                    img = img.convert('RGB')
 
         # ==========================================
         # BMP format preparation

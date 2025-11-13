@@ -129,10 +129,10 @@ class SettingsPanel(QWidget):
     def _on_format_changed(self, format_enum: ImageFormat):
         """Handle format change - update advanced settings visibility."""
         self.advanced_widget.set_active_format(format_enum)
-        self.update_advanced_visibility()  # FIXED: Remove underscore
+        self.update_advanced_visibility()
         self._on_settings_changed()
 
-    def update_advanced_visibility(self):  # FIXED: Renamed from _update_advanced_visibility
+    def update_advanced_visibility(self):
         """Show/hide advanced section based on format."""
         current_format = self.output_widget.get_selected_format()
         should_show = self.advanced_widget.should_show_for_format(current_format)
@@ -160,6 +160,14 @@ class SettingsPanel(QWidget):
             keep_metadata=output_settings["keep_metadata"],
             png_compress_level=output_settings["png_compress_level"],
             target_size_kb=output_settings["target_size_kb"],
+
+            # tiff, ico, gif
+            tiff_compression=output_settings["tiff_compression"],
+            tiff_jpeg_quality=output_settings["tiff_jpeg_quality"],
+            gif_optimize=output_settings["gif_optimize"],
+            gif_dithering=output_settings["gif_dithering"],
+            ico_size=output_settings["ico_size"],
+            ico_force_square=output_settings["ico_force_square"],
 
             # Resize settings
             resize_mode=resize_settings["resize_mode"],

@@ -93,7 +93,7 @@ class ResizeSettingsWidget(QWidget):
 
         self.fit_width_upscale_checkbox = QCheckBox("Allow upscaling (not recommended)")
         self.fit_width_upscale_checkbox.setToolTip(
-            "⚠️ Upscaling degrades image quality and increases file size.\n"
+            "Upscaling degrades image quality and increases file size.\n"
             "Only enable for specific use cases."
         )
         self.fit_width_upscale_checkbox.stateChanged.connect(self._on_target_changed)
@@ -121,7 +121,7 @@ class ResizeSettingsWidget(QWidget):
 
         self.fit_height_upscale_checkbox = QCheckBox("Allow upscaling (not recommended)")
         self.fit_height_upscale_checkbox.setToolTip(
-            "⚠️ Upscaling degrades image quality and increases file size.\n"
+            "Upscaling degrades image quality and increases file size.\n"
             "Only enable for specific use cases."
         )
         self.fit_height_upscale_checkbox.stateChanged.connect(self._on_target_changed)
@@ -157,14 +157,14 @@ class ResizeSettingsWidget(QWidget):
         dimensions_layout.addLayout(max_height_layout)
 
         # Info label for Fit to Dimensions
-        self.dimensions_info_label = QLabel("ℹ️ Image fits within box, aspect ratio preserved")
+        self.dimensions_info_label = QLabel("Image fits within box, aspect ratio preserved")
         self.dimensions_info_label.setProperty("class", "info-note")
         self.dimensions_info_label.setWordWrap(True)
         dimensions_layout.addWidget(self.dimensions_info_label)
 
         self.dimensions_upscale_checkbox = QCheckBox("Allow upscaling (not recommended)")
         self.dimensions_upscale_checkbox.setToolTip(
-            "⚠️ Upscaling degrades image quality and increases file size.\n"
+            "Upscaling degrades image quality and increases file size.\n"
             "Only enable for specific use cases."
         )
         self.dimensions_upscale_checkbox.stateChanged.connect(self._on_dimensions_changed)

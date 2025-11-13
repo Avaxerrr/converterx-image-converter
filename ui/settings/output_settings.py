@@ -198,11 +198,11 @@ class OutputSettingsWidget(QWidget):
         ico_size_layout = QHBoxLayout()
         ico_size_layout.addWidget(QLabel("Icon Size:"))
         self.ico_size_spinbox = QSpinBox()
-        self.ico_size_spinbox.setRange(16, 512)
+        self.ico_size_spinbox.setRange(16, 256)
         self.ico_size_spinbox.setSingleStep(16)
         self.ico_size_spinbox.setValue(256)
         self.ico_size_spinbox.setSuffix(" px")
-        self.ico_size_spinbox.setToolTip("Square dimensions (16-512 pixels)")
+        self.ico_size_spinbox.setToolTip("Square dimensions (16-256 pixels, PIL limitation)")
         self.ico_size_spinbox.valueChanged.connect(lambda: self.settings_changed.emit())
         ico_size_layout.addWidget(self.ico_size_spinbox)
         ico_size_layout.addStretch()
@@ -235,7 +235,7 @@ class OutputSettingsWidget(QWidget):
         bmp_layout.setContentsMargins(0, 0, 0, 0)
         bmp_layout.setSpacing(4)
 
-        bmp_info = QLabel("ℹ️ BMP is uncompressed (no quality options)")
+        bmp_info = QLabel("BMP is uncompressed (no quality options)")
         bmp_info.setProperty("class", "info-note")
         bmp_info.setWordWrap(True)
         bmp_layout.addWidget(bmp_info)
@@ -531,12 +531,12 @@ class OutputSettingsWidget(QWidget):
             'tiff_compression': self.tiff_compression_combo.currentData(),
             'tiff_jpeg_quality': self.tiff_jpeg_quality_slider.value(),
             'gif_optimize': self.gif_optimize_check.isChecked(),
-            'gif_dithering': 'floyd',  # Fixed for now (can add UI later)
+            'gif_dithering': 'floyd',
             'ico_size': self.ico_size_spinbox.value(),
             'ico_force_square': 'pad' if self.ico_force_square_pad.isChecked() else 'crop',
         }
 
-        # Handle target size (existing code)
+        # Handle target size
         if self.mode_target.isChecked() and self.target_size_input.text():
             try:
                 size_value = float(self.target_size_input.text())

@@ -370,12 +370,14 @@ class OutputPreviewGenerator:
         # TIFF format preparation
         # ==========================================
         elif settings.output_format == ImageFormat.TIFF:
-            # TIFF supports RGBA natively, no conversion needed
-            logger.debug(
-                f"TIFF format: No conversion needed (mode={img.mode})",
-                source="OutputPreviewGenerator"
-            )
-            # Pass through as-is
+            # Convert palette/indexed images to RGB for JPEG compression
+            if settings.tiff_compression == 'jpeg' and img.mode in ('P', 'PA', 'L', 'LA'):
+                # JPEG compression in TIFF only supports RGB/RGBA, not palette
+                if img.mode in ('PA', 'LA'):
+                    img = img.convert('RGBA')
+                else:
+                    img = img.convert('RGB')
+            return img
 
         # ==========================================
         # BMP format preparation
