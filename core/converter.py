@@ -1,7 +1,7 @@
 from pathlib import Path
 from PIL import Image, ImageOps
 from typing import Optional, Tuple
-from core.format_settings import ConversionSettings, ResizeMode
+from core.format_settings import ConversionSettings, ResizeMode, ImageFormat
 from utils.logger import logger, LogLevel
 import time
 import io
@@ -27,24 +27,21 @@ class ImageConverter:
 
                 logger.log(f"Original image: {original_size[0]}x{original_size[1]}", LogLevel.DEBUG, "Converter")
 
-                # Apply resize if configured
+                # Apply resize if configured (happens first, before format conversion)
                 img = ImageConverter.apply_resize(img, settings)
 
                 if img.size != original_size:
                     logger.log(f"Resized to: {img.size[0]}x{img.size[1]}", LogLevel.INFO, "Converter")
 
-                # Convert RGBA to RGB for JPEG
-                if settings.output_format.name == 'JPEG' and img.mode in ('RGBA', 'LA', 'P'):
-                    rgb_img = Image.new('RGB', img.size, (255, 255, 255))
-                    if img.mode == 'P':
-                        img = img.convert('RGBA')
-                    rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-                    img = rgb_img
+                # ==========================================
+                # Format-specific preparation
+                # ==========================================
+                img = ImageConverter._prepare_for_format(img, settings)
 
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Target size mode - iterative compression
-                if settings.target_size_kb and settings.output_format.name != 'PNG':
+                if settings.target_size_kb and settings.output_format not in [ImageFormat.PNG, ImageFormat.BMP, ImageFormat.GIF, ImageFormat.ICO]:
                     success, msg, size = ImageConverter._compress_to_target_size(
                         img, output_path, settings
                     )
@@ -172,6 +169,160 @@ class ImageConverter:
                 )
                 return img
 
+        return img
+
+    @staticmethod
+    def _prepare_for_format(img: Image.Image, settings: ConversionSettings) -> Image.Image:
+        """
+        Prepare image for target format (convert color modes, handle format-specific requirements).
+
+        This method handles all format-specific transformations that must happen
+        BEFORE saving (e.g., JPEG RGB conversion, GIF palette, ICO square enforcement).
+
+        Args:
+            img: PIL Image to prepare
+            settings: Conversion settings with target format
+
+        Returns:
+            Prepared PIL Image (may be modified in-place or new instance)
+        """
+        # JPEG: Convert RGBA/LA/P to RGB (JPEG doesn't support transparency)
+        if settings.output_format == ImageFormat.JPEG and img.mode in ('RGBA', 'LA', 'P'):
+            logger.log(f"Converting {img.mode} → RGB for JPEG format", LogLevel.DEBUG, "Converter")
+            rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            rgb_img.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            logger.log("Converted to RGB for JPEG (white background applied)", LogLevel.INFO, "Converter")
+            return rgb_img
+
+        # ==========================================
+        # GIF format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.GIF:
+            # GIF requires palette mode (256 colors max)
+            if img.mode != 'P':
+                logger.log(f"Converting {img.mode} → P (palette) for GIF format", LogLevel.DEBUG, "Converter")
+
+                # Convert to palette mode with adaptive palette
+                # Apply dithering based on settings
+                if settings.gif_dithering == "floyd":
+                    img = img.convert('P', palette=Image.ADAPTIVE, colors=256)
+                else:  # "none"
+                    img = img.convert('P', palette=Image.ADAPTIVE, colors=256, dither=Image.NONE)
+
+                logger.log(
+                    f"Converted to palette mode for GIF (256 colors, dithering={settings.gif_dithering})",
+                    LogLevel.INFO,
+                    "Converter"
+                )
+
+            return img
+
+        # ==========================================
+        # ICO format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.ICO:
+            target_size = settings.ico_size
+
+            logger.log(
+                f"ICO preparation: Original size {img.width}×{img.height}, target {target_size}×{target_size}",
+                LogLevel.DEBUG,
+                "Converter"
+            )
+
+            if img.width != img.height:
+                # Image is not square - apply force square method
+
+                if settings.ico_force_square == "pad":
+                    # Pad with transparency to make square
+                    logger.log("ICO: Using PAD method", LogLevel.INFO, "Converter")
+
+                    # Ensure RGBA mode for transparency
+                    if img.mode != 'RGBA':
+                        img = img.convert('RGBA')
+
+                    # Find the largest dimension
+                    max_dim = max(img.width, img.height)
+
+                    # Create new square image with transparent background
+                    new_img = Image.new('RGBA', (max_dim, max_dim), (0, 0, 0, 0))
+
+                    # Calculate position to center-paste original image
+                    paste_x = (max_dim - img.width) // 2
+                    paste_y = (max_dim - img.height) // 2
+                    new_img.paste(img, (paste_x, paste_y))
+
+                    # Resize to target ICO size
+                    img = new_img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+
+                    logger.log(
+                        f"ICO: Padded and resized to {target_size}×{target_size}",
+                        LogLevel.INFO,
+                        "Converter"
+                    )
+
+                elif settings.ico_force_square == "crop":
+                    # Crop to center square
+                    logger.log("ICO: Using CROP method", LogLevel.INFO, "Converter")
+
+                    # Find the smallest dimension
+                    min_dim = min(img.width, img.height)
+
+                    # Calculate center crop coordinates
+                    left = (img.width - min_dim) // 2
+                    top = (img.height - min_dim) // 2
+                    right = left + min_dim
+                    bottom = top + min_dim
+
+                    # Crop to square
+                    img = img.crop((left, top, right, bottom))
+
+                    # Resize to target ICO size
+                    img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+
+                    logger.log(
+                        f"ICO: Cropped and resized to {target_size}×{target_size}",
+                        LogLevel.INFO,
+                        "Converter"
+                    )
+
+            else:
+                # Already square - just resize to target size
+                logger.log("ICO: Image already square", LogLevel.INFO, "Converter")
+                if img.width != target_size:
+                    img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+                    logger.log(f"ICO: Resized to {target_size}×{target_size}", LogLevel.INFO, "Converter")
+
+            # Ensure RGBA mode (32-bit ICO)
+            if img.mode != 'RGBA':
+                logger.log(f"ICO: Converting {img.mode} → RGBA", LogLevel.DEBUG, "Converter")
+                img = img.convert('RGBA')
+
+            return img
+
+        # ==========================================
+        # TIFF format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.TIFF:
+            # TIFF supports RGBA natively, no conversion needed
+            logger.log(f"TIFF format: No conversion needed (mode={img.mode})", LogLevel.DEBUG, "Converter")
+            # Pass through as-is
+            return img
+
+        # ==========================================
+        # BMP format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.BMP:
+            # BMP supports RGB/RGBA
+            # Convert palette mode if present for better compatibility
+            if img.mode == 'P':
+                logger.log(f"Converting P (palette) → RGBA for BMP format", LogLevel.DEBUG, "Converter")
+                img = img.convert('RGBA')
+
+            return img
+
+        # WebP, AVIF, PNG - pass through (handled by PIL automatically)
         return img
 
     @staticmethod

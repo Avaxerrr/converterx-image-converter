@@ -587,7 +587,11 @@ class MainWindow(QMainWindow):
                 source="MainWindow"
             )
             cached_pixmap, cached_file_size = self.output_preview_cache[cache_key]
-            self.preview.display_output_preview(cached_pixmap)
+
+            # ==========================================
+            # Pass format enum to display method
+            # ==========================================
+            self.preview.display_output_preview(cached_pixmap, settings.output_format)
 
             # Update estimated size in UI
             if selected_file:
@@ -650,7 +654,11 @@ class MainWindow(QMainWindow):
             )
 
         self.preview.hide_loading_overlay()
-        self.preview.display_output_preview(pixmap)
+
+        # ==========================================
+        # Pass format enum to display method
+        # ==========================================
+        self.preview.display_output_preview(pixmap, self.current_settings.output_format)
 
         selected_file = self.file_list.get_selected_file()
         if selected_file:
@@ -1075,7 +1083,19 @@ class MainWindow(QMainWindow):
             settings.target_height_px,
             settings.max_width_px,
             settings.max_height_px,
-            settings.allow_upscaling
+            settings.allow_upscaling,
+
+            settings.lossless,
+            settings.png_compress_level,
+            settings.webp_method,
+            settings.avif_speed,
+            settings.avif_range,
+
+            settings.tiff_compression,
+            settings.tiff_jpeg_quality,
+            settings.gif_optimize,
+            settings.ico_size,
+            settings.ico_force_square
         )
 
         return (file_path, settings_hash)

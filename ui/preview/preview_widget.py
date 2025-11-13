@@ -10,6 +10,8 @@ from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPixmap, QTransform, QImage
 from pathlib import Path
 from typing import Dict
+
+from core import ImageFormat
 from models.image_file import ImageFile
 from ui.metadata_dialog import MetadataDialog
 from .image_graphics_view import ImageGraphicsView
@@ -498,7 +500,7 @@ class PreviewWidget(QWidget):
         """Set custom icons for toolbar buttons."""
         self.toolbar.set_icons(rotate_left, rotate_right, fit_window, metadata)
 
-    def display_output_preview(self, pixmap: QPixmap):
+    def display_output_preview(self, pixmap: QPixmap, format_enum: ImageFormat = None):
         """
         Display output preview pixmap (externally generated).
 
@@ -507,6 +509,7 @@ class PreviewWidget(QWidget):
 
         Args:
             pixmap: Output preview pixmap with settings applied (quality, scale, compression)
+            format_enum: Optional ImageFormat enum for format-specific messages
         """
         logger.info(
             f"Displaying output preview: {pixmap.width()}×{pixmap.height()}",
@@ -532,12 +535,31 @@ class PreviewWidget(QWidget):
         self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.view.zoom_factor = 1.0
 
-        #  More informative label with exclusions
-        self.zoom_label.setText(
-            f"Output Preview (Approx.) • "
-            f"⚠ Excludes: Target size, Method/Speed • "
-            f"Use mouse wheel to zoom"
-        )
+        # ==========================================
+        # Format-specific zoom label messages
+        # ==========================================
+        if format_enum == ImageFormat.GIF:
+            self.zoom_label.setText(
+                "Output Preview (GIF) • ⚠️ Limited to 256 colors • Use mouse wheel to zoom"
+            )
+        elif format_enum == ImageFormat.ICO:
+            self.zoom_label.setText(
+                "Output Preview (ICO) • ⚠️ Converted to square • Use mouse wheel to zoom"
+            )
+        elif format_enum is not None:
+            # Generic message for other formats
+            self.zoom_label.setText(
+                f"Output Preview ({format_enum.value}) • "
+                f"⚠ Excludes: Target size, Method/Speed • "
+                f"Use mouse wheel to zoom"
+            )
+        else:
+            # Fallback if format not provided (backwards compatibility)
+            self.zoom_label.setText(
+                f"Output Preview (Approx.) • "
+                f"⚠ Excludes: Target size, Method/Speed • "
+                f"Use mouse wheel to zoom"
+            )
 
         # Make sure toolbar is visible and enabled
         self.toolbar.show()

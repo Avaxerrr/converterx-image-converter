@@ -116,6 +116,132 @@ class OutputSettingsWidget(QWidget):
         layout.addWidget(self.png_container)
         self.png_container.hide()
 
+        # ==========================================
+        # TIFF CONTAINER
+        # ==========================================
+        self.tiff_container = QWidget()
+        tiff_layout = QVBoxLayout(self.tiff_container)
+        tiff_layout.setContentsMargins(0, 0, 0, 0)
+        tiff_layout.setSpacing(4)
+
+        tiff_label_layout = QHBoxLayout()
+        tiff_label_layout.addWidget(QLabel("Compression:"))
+        self.tiff_compression_combo = QComboBox()
+        self.tiff_compression_combo.addItem("None", "none")
+        self.tiff_compression_combo.addItem("LZW (Lossless)", "lzw")
+        self.tiff_compression_combo.addItem("JPEG (Lossy)", "jpeg")
+        self.tiff_compression_combo.addItem("PackBits", "packbits")
+        self.tiff_compression_combo.setCurrentIndex(1)  # Default: LZW
+        self.tiff_compression_combo.currentIndexChanged.connect(self._on_tiff_compression_changed)
+        tiff_label_layout.addWidget(self.tiff_compression_combo, 1)
+        tiff_layout.addLayout(tiff_label_layout)
+
+        # TIFF JPEG quality (only shown when JPEG compression selected)
+        self.tiff_jpeg_quality_container = QWidget()
+        tiff_jpeg_layout = QVBoxLayout(self.tiff_jpeg_quality_container)
+        tiff_jpeg_layout.setContentsMargins(0, 0, 0, 0)
+        tiff_jpeg_layout.setSpacing(4)
+
+        tiff_jpeg_label_layout = QHBoxLayout()
+        tiff_jpeg_label_layout.addWidget(QLabel("JPEG Quality:"))
+        self.tiff_jpeg_quality_label = QLabel("85")
+        self.tiff_jpeg_quality_label.setProperty("class", "value-label")
+        tiff_jpeg_label_layout.addWidget(self.tiff_jpeg_quality_label)
+        tiff_jpeg_label_layout.addStretch()
+        tiff_jpeg_layout.addLayout(tiff_jpeg_label_layout)
+
+        self.tiff_jpeg_quality_slider = QSlider(Qt.Orientation.Horizontal)
+        self.tiff_jpeg_quality_slider.setMinimum(1)
+        self.tiff_jpeg_quality_slider.setMaximum(100)
+        self.tiff_jpeg_quality_slider.setValue(85)
+        self.tiff_jpeg_quality_slider.valueChanged.connect(self._on_tiff_jpeg_quality_changed)
+        tiff_jpeg_layout.addWidget(self.tiff_jpeg_quality_slider)
+        tiff_layout.addWidget(self.tiff_jpeg_quality_container)
+        self.tiff_jpeg_quality_container.hide()  # Hidden by default
+
+        tiff_note = QLabel("LZW: Best for lossless compression")
+        tiff_note.setProperty("class", "info-note")
+        tiff_layout.addWidget(tiff_note)
+        layout.addWidget(self.tiff_container)
+        self.tiff_container.hide()
+
+        # ==========================================
+        # GIF CONTAINER
+        # ==========================================
+        self.gif_container = QWidget()
+        gif_layout = QVBoxLayout(self.gif_container)
+        gif_layout.setContentsMargins(0, 0, 0, 0)
+        gif_layout.setSpacing(4)
+
+        self.gif_optimize_check = QCheckBox("Optimize palette")
+        self.gif_optimize_check.setChecked(True)
+        self.gif_optimize_check.setToolTip("Reduce file size by optimizing color palette")
+        self.gif_optimize_check.stateChanged.connect(lambda: self.settings_changed.emit())
+        gif_layout.addWidget(self.gif_optimize_check)
+
+        gif_warning = QLabel("⚠️ GIF limited to 256 colors (may show dithering)")
+        gif_warning.setProperty("class", "info-note")
+        gif_warning.setWordWrap(True)
+        gif_layout.addWidget(gif_warning)
+        layout.addWidget(self.gif_container)
+        self.gif_container.hide()
+
+        # ==========================================
+        # ICO CONTAINER
+        # ==========================================
+        self.ico_container = QWidget()
+        ico_layout = QVBoxLayout(self.ico_container)
+        ico_layout.setContentsMargins(0, 0, 0, 0)
+        ico_layout.setSpacing(6)
+
+        # Size spinbox
+        ico_size_layout = QHBoxLayout()
+        ico_size_layout.addWidget(QLabel("Icon Size:"))
+        self.ico_size_spinbox = QSpinBox()
+        self.ico_size_spinbox.setRange(16, 512)
+        self.ico_size_spinbox.setSingleStep(16)
+        self.ico_size_spinbox.setValue(256)
+        self.ico_size_spinbox.setSuffix(" px")
+        self.ico_size_spinbox.setToolTip("Square dimensions (16-512 pixels)")
+        self.ico_size_spinbox.valueChanged.connect(lambda: self.settings_changed.emit())
+        ico_size_layout.addWidget(self.ico_size_spinbox)
+        ico_size_layout.addStretch()
+        ico_layout.addLayout(ico_size_layout)
+
+        # Force square method
+        ico_layout.addWidget(QLabel("If not square:"))
+        self.ico_force_square_pad = QRadioButton("Pad with transparency")
+        self.ico_force_square_pad.setChecked(True)
+        self.ico_force_square_pad.setToolTip("Add transparent borders to preserve entire image")
+        self.ico_force_square_pad.toggled.connect(lambda: self.settings_changed.emit())
+        ico_layout.addWidget(self.ico_force_square_pad)
+
+        self.ico_force_square_crop = QRadioButton("Crop to center")
+        self.ico_force_square_crop.setToolTip("Zoom-fill and crop edges to fit square")
+        self.ico_force_square_crop.toggled.connect(lambda: self.settings_changed.emit())
+        ico_layout.addWidget(self.ico_force_square_crop)
+
+        ico_note = QLabel("ICO files are always square")
+        ico_note.setProperty("class", "info-note")
+        ico_layout.addWidget(ico_note)
+        layout.addWidget(self.ico_container)
+        self.ico_container.hide()
+
+        # ==========================================
+        # BMP CONTAINER
+        # ==========================================
+        self.bmp_container = QWidget()
+        bmp_layout = QVBoxLayout(self.bmp_container)
+        bmp_layout.setContentsMargins(0, 0, 0, 0)
+        bmp_layout.setSpacing(4)
+
+        bmp_info = QLabel("ℹ️ BMP is uncompressed (no quality options)")
+        bmp_info.setProperty("class", "info-note")
+        bmp_info.setWordWrap(True)
+        bmp_layout.addWidget(bmp_info)
+        layout.addWidget(self.bmp_container)
+        self.bmp_container.hide()
+
         # Checkboxes
         self.lossless_check = QCheckBox("Lossless")
         self.lossless_check.stateChanged.connect(self._on_lossless_changed)
@@ -251,18 +377,50 @@ class OutputSettingsWidget(QWidget):
         """Handle format change."""
         format_enum = self.format_combo.currentData()
 
+        # Hide ALL format-specific containers first
+        self.quality_container.hide()
+        self.png_container.hide()
+        self.tiff_container.hide()
+        self.gif_container.hide()
+        self.ico_container.hide()
+        self.bmp_container.hide()
+        self.target_container.hide()
+
+        # Handle format-specific UI visibility
         if format_enum == ImageFormat.PNG:
             self.mode_quality.hide()
             self.mode_target.hide()
-            self.quality_container.hide()
-            self.target_container.hide()
             self.png_container.show()
             self.lossless_check.hide()
-        else:
+
+        elif format_enum == ImageFormat.TIFF:
+            self.mode_quality.hide()
+            self.mode_target.hide()
+            self.tiff_container.show()
+            self.lossless_check.hide()
+
+        elif format_enum == ImageFormat.GIF:
+            self.mode_quality.hide()
+            self.mode_target.hide()
+            self.gif_container.show()
+            self.lossless_check.hide()
+
+        elif format_enum == ImageFormat.ICO:
+            self.mode_quality.hide()
+            self.mode_target.hide()
+            self.ico_container.show()
+            self.lossless_check.hide()
+
+        elif format_enum == ImageFormat.BMP:
+            self.mode_quality.hide()
+            self.mode_target.hide()
+            self.bmp_container.show()
+            self.lossless_check.hide()
+
+        else:  # JPEG, WebP, AVIF
             self.mode_quality.show()
             self.mode_target.show()
-            self.png_container.hide()
-            self._on_mode_changed()
+            self._on_mode_changed()  # Show quality or target container
 
             if format_enum == ImageFormat.JPEG:
                 self.lossless_check.hide()
@@ -270,6 +428,23 @@ class OutputSettingsWidget(QWidget):
                 self.lossless_check.show()
 
         self.format_changed.emit(format_enum)
+        self.settings_changed.emit()
+
+    def _on_tiff_compression_changed(self):
+        """Handle TIFF compression type change."""
+        compression = self.tiff_compression_combo.currentData()
+
+        # Show JPEG quality slider only when JPEG compression is selected
+        if compression == "jpeg":
+            self.tiff_jpeg_quality_container.show()
+        else:
+            self.tiff_jpeg_quality_container.hide()
+
+        self.settings_changed.emit()
+
+    def _on_tiff_jpeg_quality_changed(self, value: int):
+        """Handle TIFF JPEG quality slider change."""
+        self.tiff_jpeg_quality_label.setText(str(value))
         self.settings_changed.emit()
 
     def _on_mode_changed(self):
@@ -348,10 +523,20 @@ class OutputSettingsWidget(QWidget):
             'custom_suffix': self.custom_suffix_input.text().strip(),
             'custom_base_name': self.base_name_input.text().strip() if self.base_name_custom.isChecked() else "",
             'auto_increment': self.auto_increment_check.isChecked(),
-            'enable_filename_suffix': self.enable_suffix_check.isChecked()
+            'enable_filename_suffix': self.enable_suffix_check.isChecked(),
+
+            # ==========================================
+            # Format-specific settings
+            # ==========================================
+            'tiff_compression': self.tiff_compression_combo.currentData(),
+            'tiff_jpeg_quality': self.tiff_jpeg_quality_slider.value(),
+            'gif_optimize': self.gif_optimize_check.isChecked(),
+            'gif_dithering': 'floyd',  # Fixed for now (can add UI later)
+            'ico_size': self.ico_size_spinbox.value(),
+            'ico_force_square': 'pad' if self.ico_force_square_pad.isChecked() else 'crop',
         }
 
-        # Handle target size
+        # Handle target size (existing code)
         if self.mode_target.isChecked() and self.target_size_input.text():
             try:
                 size_value = float(self.target_size_input.text())

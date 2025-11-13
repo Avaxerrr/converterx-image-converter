@@ -10,6 +10,10 @@ class ImageFormat(Enum):
     AVIF = "AVIF"
     JPEG = "JPEG"
     PNG = "PNG"
+    TIFF = "TIFF"
+    GIF = "GIF"
+    BMP = "BMP"
+    ICO = "ICO"
 
 
 class ResizeMode(Enum):
@@ -35,7 +39,8 @@ class FilenameTemplate(Enum):
     QUALITY = "_Q{quality}"
     CUSTOM = "custom"  # Indicates user will provide custom suffix
 
-    def apply(self, original_stem: str, format_name: str, quality: int, custom_suffix: str = "", enable_suffix: bool = True) -> str:
+    def apply(self, original_stem: str, format_name: str, quality: int, custom_suffix: str = "",
+              enable_suffix: bool = True) -> str:
         """
         Apply template to generate new filename stem.
 
@@ -67,7 +72,6 @@ class FilenameTemplate(Enum):
                 return f"{original_stem}{custom_suffix}"
             return original_stem
         return original_stem
-
 
 
 @dataclass
@@ -103,6 +107,24 @@ class ConversionSettings:
     custom_suffix: str = ""
     custom_base_name: str = ""
     auto_increment: bool = True
+
+    # ==========================================
+    # Format-specific settings
+    # ==========================================
+
+    # TIFF settings
+    tiff_compression: str = "lzw"  # "none", "lzw", "jpeg", "packbits"
+    tiff_jpeg_quality: int = 85  # Only used if compression="jpeg"
+
+    # GIF settings
+    gif_optimize: bool = True
+    gif_dithering: str = "floyd"  # "floyd", "none"
+
+    # ICO settings
+    ico_size: int = 256  # Square dimension (16-512)
+    ico_force_square: str = "pad"  # "pad", "crop"
+
+    # BMP settings (none needed - uncompressed format)
 
     def to_pillow_kwargs(self, quality_override: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -141,6 +163,37 @@ class ConversionSettings:
             kwargs['optimize'] = True
             kwargs['compress_level'] = self.png_compress_level
 
+        elif self.output_format == ImageFormat.TIFF:
+            kwargs['format'] = 'TIFF'
+            # Map compression names to PIL-expected values
+            compression_map = {
+                'none': None,
+                'lzw': 'tiff_lzw',
+                'jpeg': 'jpeg',
+                'packbits': 'packbits'
+            }
+            if self.tiff_compression in compression_map:
+                compression_value = compression_map[self.tiff_compression]
+                if compression_value is not None:  # Only add if not 'none'
+                    kwargs['compression'] = compression_value
+            # Only add quality if JPEG compression is used
+            if self.tiff_compression == 'jpeg':
+                kwargs['quality'] = self.tiff_jpeg_quality
+
+        elif self.output_format == ImageFormat.GIF:
+            kwargs['format'] = 'GIF'
+            kwargs['optimize'] = self.gif_optimize
+            # Dithering handled during palette conversion in converter
+
+        elif self.output_format == ImageFormat.ICO:
+            kwargs['format'] = 'ICO'
+            # Size specification handled in converter (image needs to be square first)
+            kwargs['sizes'] = [(self.ico_size, self.ico_size)]
+
+        elif self.output_format == ImageFormat.BMP:
+            kwargs['format'] = 'BMP'
+            # No options for BMP (uncompressed)
+
         if not self.keep_metadata:
             kwargs['exif'] = b''
 
@@ -153,6 +206,10 @@ class ConversionSettings:
             ImageFormat.WEBP: '.webp',
             ImageFormat.AVIF: '.avif',
             ImageFormat.JPEG: '.jpg',
-            ImageFormat.PNG: '.png'
+            ImageFormat.PNG: '.png',
+            ImageFormat.TIFF: '.tiff',
+            ImageFormat.GIF: '.gif',
+            ImageFormat.BMP: '.bmp',
+            ImageFormat.ICO: '.ico'
         }
         return extensions[self.output_format]

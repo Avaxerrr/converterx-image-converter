@@ -7,10 +7,10 @@ from utils.logger import logger
 
 
 # Supported image formats
-SUPPORTED_FORMATS = {
-    '.jpg', '.jpeg', '.png', '.webp', '.bmp',
-    '.tiff', '.tif', '.gif', '.avif'
-}
+SUPPORTED_FORMATS = [
+    '.jpg', '.jpeg', '.png', '.webp', '.avif',
+    '.tiff', '.tif', '.gif', '.bmp', '.ico'
+]
 
 
 def is_supported_image(file_path: Path) -> bool:

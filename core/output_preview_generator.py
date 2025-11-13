@@ -251,7 +251,6 @@ class OutputPreviewGenerator:
                 return rgb_img
 
         # WebP/AVIF: Convert RGBA to RGB if no transparency
-        # (This optimization is optional but matches converter.py behavior)
         elif settings.output_format in (ImageFormat.WEBP, ImageFormat.AVIF):
             if img.mode == 'RGBA':
                 # Check if image has actual transparency
@@ -263,6 +262,134 @@ class OutputPreviewGenerator:
                     rgb_img = Image.new('RGB', img.size, (255, 255, 255))
                     rgb_img.paste(img)
                     return rgb_img
+
+        # ==========================================
+        # GIF format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.GIF:
+            # GIF requires palette mode (256 colors max)
+            if img.mode != 'P':
+                logger.debug(
+                    f"Converting {img.mode} → P (palette) for GIF format",
+                    source="OutputPreviewGenerator"
+                )
+
+                # Convert to palette mode with adaptive palette
+                # Apply dithering based on settings
+                if settings.gif_dithering == "floyd":
+                    img = img.convert('P', palette=Image.ADAPTIVE, colors=256)
+                else:  # "none"
+                    img = img.convert('P', palette=Image.ADAPTIVE, colors=256, dither=Image.NONE)
+
+                logger.info(
+                    f"Converted to palette mode for GIF (256 colors, dithering={settings.gif_dithering})",
+                    source="OutputPreviewGenerator"
+                )
+
+                return img
+
+        # ==========================================
+        # ICO format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.ICO:
+            # ICO must be square - apply force square method
+            if img.width != img.height:
+                target_size = settings.ico_size
+
+                if settings.ico_force_square == "pad":
+                    # Pad with transparency to make square
+                    logger.debug(
+                        f"Padding {img.width}×{img.height} → {target_size}×{target_size} for ICO",
+                        source="OutputPreviewGenerator"
+                    )
+
+                    # Ensure RGBA mode for transparency
+                    if img.mode != 'RGBA':
+                        img = img.convert('RGBA')
+
+                    # Calculate padding
+                    max_dim = max(img.width, img.height)
+                    new_img = Image.new('RGBA', (max_dim, max_dim), (0, 0, 0, 0))
+
+                    # Center paste
+                    paste_x = (max_dim - img.width) // 2
+                    paste_y = (max_dim - img.height) // 2
+                    new_img.paste(img, (paste_x, paste_y))
+
+                    # Resize to target size
+                    img = new_img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+
+                    logger.info(
+                        f"ICO padded to square: {target_size}×{target_size}",
+                        source="OutputPreviewGenerator"
+                    )
+
+                elif settings.ico_force_square == "crop":
+                    # Crop to center square
+                    logger.debug(
+                        f"Cropping {img.width}×{img.height} → {target_size}×{target_size} for ICO",
+                        source="OutputPreviewGenerator"
+                    )
+
+                    # Find the smallest dimension
+                    min_dim = min(img.width, img.height)
+
+                    # Calculate center crop
+                    left = (img.width - min_dim) // 2
+                    top = (img.height - min_dim) // 2
+                    right = left + min_dim
+                    bottom = top + min_dim
+
+                    img = img.crop((left, top, right, bottom))
+
+                    # Resize to target size
+                    img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+
+                    logger.info(
+                        f"ICO cropped to square: {target_size}×{target_size}",
+                        source="OutputPreviewGenerator"
+                    )
+
+                return img
+            else:
+                # Already square, just resize to target size
+                if img.width != settings.ico_size:
+                    logger.debug(
+                        f"Resizing square ICO: {img.width}×{img.height} → {settings.ico_size}×{settings.ico_size}",
+                        source="OutputPreviewGenerator"
+                    )
+                    img = img.resize((settings.ico_size, settings.ico_size), Image.Resampling.LANCZOS)
+
+                # Ensure RGBA mode for ICO
+                if img.mode != 'RGBA':
+                    img = img.convert('RGBA')
+
+                return img
+
+        # ==========================================
+        # TIFF format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.TIFF:
+            # TIFF supports RGBA natively, no conversion needed
+            logger.debug(
+                f"TIFF format: No conversion needed (mode={img.mode})",
+                source="OutputPreviewGenerator"
+            )
+            # Pass through as-is
+
+        # ==========================================
+        # BMP format preparation
+        # ==========================================
+        elif settings.output_format == ImageFormat.BMP:
+            # BMP supports RGB/RGBA, but RGBA is better
+            # Convert palette mode if present
+            if img.mode == 'P':
+                logger.debug(
+                    f"Converting P (palette) → RGBA for BMP format",
+                    source="OutputPreviewGenerator"
+                )
+                img = img.convert('RGBA')
+            # Pass through otherwise
 
         if img.mode != original_mode:
             logger.debug(
@@ -284,8 +411,10 @@ class OutputPreviewGenerator:
 
         Applied Settings:
         - Quality, lossless, PNG compression (already applied)
-        - WebP subsampling (NEW - affects visual quality)
-        - AVIF range (NEW - affects contrast/levels)
+        - WebP subsampling (affects visual quality)
+        - AVIF range (affects contrast/levels)
+        - TIFF compression (affects visual quality for JPEG compression)
+        - GIF optimization (affects visual quality)
 
         Excluded Settings:
         - WebP method (no visual difference, only compression efficiency)
@@ -338,8 +467,6 @@ class OutputPreviewGenerator:
                     source="OutputPreviewGenerator"
                 )
 
-            # Skip method (no visual impact, only compression speed)
-
         elif settings.output_format == ImageFormat.AVIF:
             kwargs['format'] = 'AVIF'
             if settings.lossless:
@@ -359,5 +486,66 @@ class OutputPreviewGenerator:
                     f"AVIF range applied: {settings.avif_range}",
                     source="OutputPreviewGenerator"
                 )
+
+        # ==========================================
+        # TIFF format kwargs
+        # ==========================================
+        elif settings.output_format == ImageFormat.TIFF:
+            kwargs['format'] = 'TIFF'
+            kwargs['compression'] = settings.tiff_compression
+
+            # Only add quality if JPEG compression is used
+            if settings.tiff_compression == 'jpeg':
+                kwargs['quality'] = settings.tiff_jpeg_quality
+                logger.debug(
+                    f"TIFF kwargs: compression=jpeg, quality={settings.tiff_jpeg_quality}",
+                    source="OutputPreviewGenerator"
+                )
+            else:
+                logger.debug(
+                    f"TIFF kwargs: compression={settings.tiff_compression}",
+                    source="OutputPreviewGenerator"
+                )
+
+        # ==========================================
+        # GIF format kwargs
+        # ==========================================
+        elif settings.output_format == ImageFormat.GIF:
+            kwargs['format'] = 'GIF'
+            kwargs['optimize'] = settings.gif_optimize
+
+            # Save transparency if present
+            kwargs['transparency'] = 0  # Preserve transparent color
+            kwargs['disposal'] = 2  # Clear frame after rendering
+
+            logger.debug(
+                f"GIF kwargs: optimize={settings.gif_optimize}",
+                source="OutputPreviewGenerator"
+            )
+
+        # ==========================================
+        # ICO format kwargs
+        # ==========================================
+        elif settings.output_format == ImageFormat.ICO:
+            kwargs['format'] = 'ICO'
+            # Note: sizes parameter is handled during format preparation (square conversion)
+            # PIL automatically uses the image size for single-size ICO
+            kwargs['sizes'] = [(settings.ico_size, settings.ico_size)]
+
+            logger.debug(
+                f"ICO kwargs: size={settings.ico_size}×{settings.ico_size}",
+                source="OutputPreviewGenerator"
+            )
+
+        # ==========================================
+        # BMP format kwargs
+        # ==========================================
+        elif settings.output_format == ImageFormat.BMP:
+            kwargs['format'] = 'BMP'
+            # BMP has no compression options
+            logger.debug(
+                "BMP kwargs: no options (uncompressed)",
+                source="OutputPreviewGenerator"
+            )
 
         return kwargs
