@@ -139,6 +139,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
+        self.status_bar.setSizeGripEnabled(False)
 
         # Add performance monitor widget to status bar (right side)
         from ui.widgets.performance_widget import PerformanceWidget

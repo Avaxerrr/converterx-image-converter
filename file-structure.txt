@@ -5,53 +5,18 @@ Image Converter/
 |    +--- converter.py
 |    +--- format_settings.py
 |    \--- output_preview_generator.py
-|    
-+--- fonts
-|    \--- Inter-VariableFont_opsz,wght.ttf
-|    
-+--- icons
-|    +--- 3-dots.png
-|    +--- __init__.py
-|    +--- add_photo.svg
-|    +--- arrow-down-white.png
-|    +--- arrow-up-white.png
-|    +--- cancel_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- center_focus.svg
-|    +--- check_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- close_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- cycle.svg
-|    +--- default-settings.svg
-|    +--- delete.svg
-|    +--- done_all_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- done_outline.svg
-|    +--- download_done_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- hd-preview.svg
-|    +--- hd-previewads.svg
-|    +--- info.svg
-|    +--- pause_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- pending_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- performance-settings.svg
-|    +--- preview-settings.svg
-|    +--- preview.svg
-|    +--- progress.svg
-|    +--- progress_activity_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- rotate_left.svg
-|    +--- rotate_right.svg
-|    +--- schedule.svg
-|    +--- settings.svg
-|    +--- settings_applications_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    +--- warning.svg
-|    \--- x_circle_24dp_CCCCCC_FILL0_wght400_GRAD0_opsz24.svg
-|    
+|
 +--- logs
 +--- models
 |    +--- __init__.py
 |    \--- image_file.py
-|    
+|
 +--- ui
 |    +--- app_settings
 |    |    +--- __init__.py
+|    |    +--- about_page.py
 |    |    +--- app_settings_dialog.py
+|    |    +--- base_doc_page.py
 |    |    +--- defaults_page.py
 |    |    +--- performance_page.py
 |    |    \--- preview_page.py
@@ -73,7 +38,8 @@ Image Converter/
 |    |    
 |    +--- widgets
 |    |    +--- __init__.py
-|    |    \--- loading_spinner.py
+|    |    +--- loading_spinner.py
+|    |    \--- performance_widget.py
 |    |    
 |    +--- __init__.py
 |    +--- file_list_widget.py
@@ -85,7 +51,8 @@ Image Converter/
 |    +--- __init__.py
 |    +--- file_utils.py
 |    +--- filename_utils.py
-|    \--- logger.py
+|    +--- logger.py
+|    \--- performance_monitor.py
 |    
 +--- workers
 |    +--- __init__.py
@@ -93,6 +60,10 @@ Image Converter/
 |    +--- output_preview_worker.py
 |    \--- thumbnail_generator.py
 |    
++--- app_icon.ico
++--- build.py
 +--- file-structure.txt
 +--- main.py
++--- resources.qrc
++--- resources_rc.py
 \--- theme.qss

@@ -33,6 +33,7 @@ class ResizeSettingsWidget(QWidget):
         mode_layout.addWidget(QLabel("Resize:"))
 
         self.resize_mode_combo = QComboBox()
+        self.resize_mode_combo.setObjectName("resizeModeCombo")
         self.resize_mode_combo.addItem("None", ResizeMode.NONE)
         self.resize_mode_combo.addItem("Scale by %", ResizeMode.PERCENTAGE)
         self.resize_mode_combo.addItem("Fit by Width", ResizeMode.FIT_TO_WIDTH)

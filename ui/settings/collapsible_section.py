@@ -31,7 +31,7 @@ class CollapsibleSection(QWidget):
         self.content_area.setProperty("class", "collapsible-content")
         self.content_layout = QVBoxLayout(self.content_area)
 
-        # ✅ CUSTOM SPACING per section
+        # CUSTOM SPACING per section
         self.content_layout.setContentsMargins(10, 10, 10, 10)
         self.content_layout.setSpacing(content_spacing)  # Use parameter
 
