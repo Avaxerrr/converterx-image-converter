@@ -500,6 +500,49 @@ QStatusBar {
 }
 
 /* ============================================
+   PERFORMANCE MONITOR (Status Bar Widget)
+   ============================================ */
+
+/* Main widget container */
+QWidget#performanceWidget {
+    background: transparent;
+    padding: 0px;
+}
+
+/* Status bar specific styling */
+QStatusBar QWidget#performanceWidget QLabel#performanceCpuLabel,
+QStatusBar QWidget#performanceWidget QLabel#performanceRamLabel {
+    color: #0D0D0D;
+    font-size: 10pt;
+    font-weight: 500;
+    padding: 0px 4px;
+    background: transparent;
+}
+
+QStatusBar QWidget#performanceWidget QLabel#performanceSeparator {
+    color: #0D0D0D;
+    font-size: 10pt;
+    padding: 0px 2px;
+    background: transparent;
+}
+
+/* Fallback for direct label styling */
+QLabel#performanceCpuLabel,
+QLabel#performanceRamLabel {
+    color: #0D0D0D;
+    font-size: 10pt;
+    font-weight: 500;
+    padding: 0px 4px;
+}
+
+QLabel#performanceSeparator {
+    color: #0D0D0D;
+    font-size: 10pt;
+    padding: 0px 2px;
+}
+
+
+/* ============================================
    FILE LIST WIDGET STYLES
    ============================================ */
 FileListWidget #titleLabel {

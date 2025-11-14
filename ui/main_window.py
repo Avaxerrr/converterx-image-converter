@@ -140,6 +140,11 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
 
+        # Add performance monitor widget to status bar (right side)
+        from ui.widgets.performance_widget import PerformanceWidget
+        self.performance_widget = PerformanceWidget(self.app_settings, parent=self)
+        self.status_bar.addPermanentWidget(self.performance_widget)
+
     def _connect_signals(self):
         """Connect widget signals to slots."""
         self.file_list.add_btn.clicked.connect(self._on_add_files)
@@ -825,7 +830,7 @@ class MainWindow(QMainWindow):
 
         # Check for mixed sources warning (only if SAME_AS_SOURCE mode)
         if settings_snapshot.output_location_mode == OutputLocationMode.SAME_AS_SOURCE:
-            # FIXED: Use f.path.parent instead of f.filename.parent
+            # Use f.path.parent instead of f.filename.parent
             unique_folders = set(f.path.parent for f in files)
             if len(unique_folders) > 1:
                 # Show warning

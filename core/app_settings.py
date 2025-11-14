@@ -46,6 +46,12 @@ class SettingsKeys:
     DEFAULT_CUSTOM_SUFFIX = "defaults/custom_suffix"
     DEFAULT_AUTO_INCREMENT = "defaults/auto_increment"
 
+    # Performance monitoring (add after THREAD_POOL_MAX_THREADS)
+    SHOW_PERFORMANCE_MONITOR = "performance/show_monitor"
+    PERFORMANCE_SHOW_CPU = "performance/show_cpu"
+    PERFORMANCE_SHOW_RAM = "performance/show_ram"
+    PERFORMANCE_UPDATE_INTERVAL = "performance/update_interval"
+
 
 class AppSettingsController(QObject):
     """
@@ -258,8 +264,6 @@ class AppSettingsController(QObject):
     def get_default_enable_filename_suffix(self) -> bool:
         return bool(self.settings.value(SettingsKeys.DEFAULT_ENABLE_FILENAME_SUFFIX, True, type=bool))
 
-    from typing import cast  # already present in this file
-
     def get_default_filename_template(self) -> FilenameTemplate:
         # Coerce to str for type checkers, then map to enum
         raw = self.settings.value(SettingsKeys.DEFAULT_FILENAME_TEMPLATE, "CONVERTED")
@@ -319,6 +323,56 @@ class AppSettingsController(QObject):
 
         self.settings.setValue(SettingsKeys.THREADPOOL_MAX_THREADS, value)
         self.performance_changed.emit()
+
+    # ============================================================
+    # Performance Monitor Settings
+    # ============================================================
+
+    def get_show_performance_monitor(self) -> bool:
+        """Get whether performance monitor is enabled."""
+        value = self.settings.value(SettingsKeys.SHOW_PERFORMANCE_MONITOR, True, type=bool)
+        return bool(value)  # Explicit cast to bool
+
+    def set_show_performance_monitor(self, enabled: bool):
+        """Set whether performance monitor is enabled."""
+        self.settings.setValue(SettingsKeys.SHOW_PERFORMANCE_MONITOR, enabled)
+        self.performance_changed.emit()
+        logger.debug(f"Performance monitor enabled: {enabled}", source="AppSettings")
+
+    def get_performance_show_cpu(self) -> bool:
+        """Get whether to show CPU usage."""
+        value = self.settings.value(SettingsKeys.PERFORMANCE_SHOW_CPU, True, type=bool)
+        return bool(value)  # Explicit cast to bool
+
+    def set_performance_show_cpu(self, enabled: bool):
+        """Set whether to show CPU usage."""
+        self.settings.setValue(SettingsKeys.PERFORMANCE_SHOW_CPU, enabled)
+        self.performance_changed.emit()
+        logger.debug(f"Performance show CPU: {enabled}", source="AppSettings")
+
+    def get_performance_show_ram(self) -> bool:
+        """Get whether to show RAM usage."""
+        value = self.settings.value(SettingsKeys.PERFORMANCE_SHOW_RAM, True, type=bool)
+        return bool(value)  # Explicit cast to bool
+
+    def set_performance_show_ram(self, enabled: bool):
+        """Set whether to show RAM usage."""
+        self.settings.setValue(SettingsKeys.PERFORMANCE_SHOW_RAM, enabled)
+        self.performance_changed.emit()
+        logger.debug(f"Performance show RAM: {enabled}", source="AppSettings")
+
+    def get_performance_update_interval(self) -> int:
+        """Get performance monitor update interval in milliseconds."""
+        value = self.settings.value(SettingsKeys.PERFORMANCE_UPDATE_INTERVAL, 2000, type=int)
+        return cast(int, value)  # Use cast() like other methods
+
+    def set_performance_update_interval(self, interval_ms: int):
+        """Set performance monitor update interval in milliseconds."""
+        # Clamp to 1-5 seconds
+        interval_ms = max(1000, min(5000, interval_ms))
+        self.settings.setValue(SettingsKeys.PERFORMANCE_UPDATE_INTERVAL, interval_ms)
+        self.performance_changed.emit()
+        logger.debug(f"Performance update interval: {interval_ms}ms", source="AppSettings")
 
     # ============================================================
     # PREVIEW SETTINGS - Setters
