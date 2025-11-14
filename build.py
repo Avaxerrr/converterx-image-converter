@@ -28,8 +28,6 @@ def build():
         sys.executable, "-m", "nuitka",
         "--standalone",
         "--enable-plugin=pyside6",
-        "--include-data-dir=fonts=fonts",
-        "--include-data-dir=icons=icons",
         "--include-data-file=theme.qss=theme.qss",
         "--include-data-file=resources_rc.py=resources_rc.py",
         "--include-package=pillow_avif",

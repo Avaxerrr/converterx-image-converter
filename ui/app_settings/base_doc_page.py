@@ -95,6 +95,9 @@ class BaseDocPage(QWidget, metaclass=QWidgetABCMeta):
         content.setOpenExternalLinks(False)  # Handle links manually if needed
         content.setHtml(self.get_content())  # Get HTML from subclass
 
+        # Add margins to create spacing from edges
+        content.document().setDocumentMargin(20)
+
         # Assemble layout
         scroll.setWidget(content)
         main_layout = QVBoxLayout(self)
@@ -143,7 +146,6 @@ class QuickGuidePage(BaseDocPage):
                 color: #CCCCCC;
                 font-size: 12px;
                 line-height: 1.6;
-                padding: 20px;
             }
             h1 {
                 color: #4fc3f7;
@@ -201,7 +203,7 @@ class QuickGuidePage(BaseDocPage):
             <li>Right-click files for options (Open folder, Remove)</li>
         </ul>
         
-        <p><b>Supported formats:</b> JPEG, PNG, WebP, AVIF, BMP, TIFF</p>
+        <p><b>Input formats:</b> JPEG, PNG, WebP, AVIF, BMP, TIFF, GIF, ICO</p>
         
         <h2>2. Preview</h2>
         <p>Click any image in the file list to view it. Three preview modes available:</p>
@@ -218,7 +220,11 @@ class QuickGuidePage(BaseDocPage):
             <li><b>WebP</b> - Excellent compression, wide browser support</li>
             <li><b>AVIF</b> - Best compression, smaller files</li>
             <li><b>JPEG</b> - Universal compatibility</li>
-            <li><b>PNG</b> - Lossless compression</li>
+            <li><b>PNG</b> - Lossless compression, supports transparency</li>
+            <li><b>TIFF</b> - Archival format with multiple compression options</li>
+            <li><b>GIF</b> - 256-color palette, supports animation</li>
+            <li><b>ICO</b> - Windows icon format (16-256px)</li>
+            <li><b>BMP</b> - Uncompressed bitmap (legacy compatibility)</li>
         </ul>
         
         <p><b>Quality Control:</b></p>
@@ -272,7 +278,6 @@ class FeaturesPage(BaseDocPage):
                 color: #CCCCCC;
                 font-size: 12px;
                 line-height: 1.6;
-                padding: 20px;
             }
             h1 {
                 color: #4fc3f7;
@@ -343,6 +348,13 @@ class FeaturesPage(BaseDocPage):
                 padding: 14px;
                 margin: 12px 0;
             }
+            .warning-box {
+                background-color: #3a2a1e;
+                border-left: 3px solid #ff9800;
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 3px;
+            }
         </style>
         
         <h1>Features</h1>
@@ -367,13 +379,33 @@ class FeaturesPage(BaseDocPage):
             </tr>
             <tr>
                 <td><b>JPEG</b></td>
-                <td>Standard compression</td>
-                <td>Universal compatibility</td>
+                <td>Standard lossy</td>
+                <td>Universal compatibility, photos</td>
             </tr>
             <tr>
                 <td><b>PNG</b></td>
                 <td>Lossless</td>
                 <td>Graphics, logos, transparency</td>
+            </tr>
+            <tr>
+                <td><b>TIFF</b></td>
+                <td>LZW, JPEG, PackBits, or None</td>
+                <td>Archival, printing, professional photography</td>
+            </tr>
+            <tr>
+                <td><b>GIF</b></td>
+                <td>LZW (256 colors max)</td>
+                <td>Simple animations, legacy web graphics</td>
+            </tr>
+            <tr>
+                <td><b>ICO</b></td>
+                <td>Uncompressed (BMP-based)</td>
+                <td>Windows application icons (max 256×256)</td>
+            </tr>
+            <tr>
+                <td><b>BMP</b></td>
+                <td>Uncompressed</td>
+                <td>Legacy compatibility, Windows wallpapers</td>
             </tr>
         </table>
         
@@ -451,6 +483,34 @@ class FeaturesPage(BaseDocPage):
             <h3>PNG Settings</h3>
             <ul>
                 <li><b>Compression Level (0-9):</b> Higher = smaller files but slower. Default: 6</li>
+            </ul>
+            
+            <h3>TIFF Settings</h3>
+            <ul>
+                <li><b>Compression:</b> None, LZW (lossless), JPEG (lossy), PackBits</li>
+                <li><b>JPEG Quality:</b> Only when JPEG compression selected (1-100)</li>
+                <li><b>Note:</b> JPEG compression requires RGB mode (converts palette images automatically)</li>
+            </ul>
+            
+            <h3>GIF Settings</h3>
+            <ul>
+                <li><b>Optimize Palette:</b> Reduce file size by optimizing 256-color table</li>
+                <li><b>Note:</b> Limited to 256 colors, may show dithering on photos</li>
+            </ul>
+            
+            <h3>ICO Settings</h3>
+            <ul>
+                <li><b>Size:</b> 16-256 pixels (square icons only)</li>
+                <li><b>Non-square images:</b> Pad with transparency or crop to center</li>
+            </ul>
+            
+            <div class="warning-box">
+                <b>⚠️ ICO Limitation:</b> Pillow supports up to 256×256 pixels (standard BMP-based ICO format). For larger icons, use PNG format instead.
+            </div>
+            
+            <h3>BMP Settings</h3>
+            <ul>
+                <li>No compression options available (uncompressed format)</li>
             </ul>
         </div>
         
