@@ -4,7 +4,7 @@ Widget for displaying image preview with zoom and rotation.
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QHBoxLayout,
-    QGraphicsScene, QGraphicsPixmapItem
+    QGraphicsScene, QGraphicsPixmapItem, QPushButton
 )
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPixmap, QTransform, QImage
@@ -599,14 +599,12 @@ class PreviewWidget(QWidget):
 
     def create_loading_overlay(self):
         """Create the loading overlay widget with animated spinner (called once)."""
-        from PySide6.QtWidgets import QLabel, QVBoxLayout
-        from PySide6.QtCore import Qt
 
         # Semi-transparent overlay
         self.loading_overlay = QWidget(self)
         self.loading_overlay.setObjectName("loadingOverlay")
 
-        # Container for spinner + text
+        # Container for spinner + text + cancel button
         container = QWidget(self.loading_overlay)
         container_layout = QVBoxLayout(container)
         container_layout.setSpacing(16)
@@ -623,13 +621,26 @@ class PreviewWidget(QWidget):
         self.loading_label.setAlignment(Qt.AlignCenter)
         container_layout.addWidget(self.loading_label)
 
+        # Cancel button
+        self.loading_cancel_btn = QPushButton("Cancel", container)
+        self.loading_cancel_btn.setObjectName("loadingCancelBtn")
+        self.loading_cancel_btn.setFixedWidth(100)
+        self.loading_cancel_btn.setCursor(Qt.PointingHandCursor)
+        container_layout.addWidget(self.loading_cancel_btn, alignment=Qt.AlignCenter)
+
         # Center the container
         container.setStyleSheet("background: transparent;")
 
         # Start hidden
         self.loading_overlay.hide()
 
-        logger.debug("Loading overlay with spinner created", source="PreviewWidget")
+        logger.debug("Loading overlay with spinner and cancel button created", source="PreviewWidget")
+
+    def get_cancel_button(self):
+        """Get reference to the cancel button in loading overlay."""
+        if hasattr(self, 'loading_cancel_btn'):
+            return self.loading_cancel_btn
+        return None
 
     def update_loading_overlay_geometry(self):
         """Update loading overlay size to match widget."""

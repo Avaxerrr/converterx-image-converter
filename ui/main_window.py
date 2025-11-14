@@ -70,6 +70,9 @@ class MainWindow(QMainWindow):
         self.output_preview_cache: Dict[tuple, Tuple[QPixmap, int]] = {}
         logger.debug("Output preview cache initialized", source="MainWindow")
 
+        # Track current output preview worker for cancellation
+        self.current_output_preview_worker = None
+
         self._setup_ui()
         self._connect_signals()
 
@@ -160,16 +163,46 @@ class MainWindow(QMainWindow):
         )
         logger.debug("Output preview signals connected", source="MainWindow")
 
+    def _connect_preview_cancel_button(self):
+        """Connect preview loading overlay cancel button (called when overlay is shown)."""
+        cancel_btn = self.preview.get_cancel_button()
+        if cancel_btn:
+            # Check if already connected by using a flag attribute
+            if not hasattr(self, '_cancel_button_connected'):
+                cancel_btn.clicked.connect(self._cancel_output_preview)
+                self._cancel_button_connected = True
+                logger.debug("Preview cancel button connected", source="MainWindow")
+
+    def _cancel_output_preview(self):
+        """Cancel the currently running output preview generation."""
+        if self.current_output_preview_worker:
+            logger.info("User cancelled output preview generation", source="MainWindow")
+
+            # Stop the worker (QRunnable doesn't have built-in cancellation,
+            # but we can mark it as cancelled and ignore its result)
+            self.current_output_preview_worker = None
+
+            # Hide overlay immediately
+            self.preview.hide_loading_overlay()
+
+            # Return to original preview
+            selected_file = self.file_list.get_selected_file()
+            if selected_file:
+                self.preview.show_image(selected_file)
+                logger.debug(f"Reverted to original preview: {selected_file.filename}", source="MainWindow")
+
+            # Turn off output preview button
+            self.preview.toolbar.output_preview_btn.setChecked(False)
+
+            self.status_bar.showMessage("Output preview cancelled", 2000)
+
     def _on_add_files(self):
         """Handle Add Files button click."""
-        formats = " ".join([f"*{ext}" for ext in SUPPORTED_FORMATS])
+        formats = ' '.join([f'*{ext}' for ext in SUPPORTED_FORMATS])
         filter_str = f"Image Files ({formats});;All Files (*.*)"
 
         file_paths, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select Images",
-            "",
-            filter_str
+            self, "Select Images", "", filter_str
         )
 
         if file_paths:
@@ -182,11 +215,14 @@ class MainWindow(QMainWindow):
             image_files = load_image_files(paths)
 
             if image_files:
-                logger.info(
-                    f"Added {len(image_files)} file(s) to queue",
-                    source="MainWindow"
-                )
+                logger.info(f"Added {len(image_files)} files to queue", source="MainWindow")
                 self.file_list.add_files(image_files)
+                # Update status bar after loading completes
+                self.status_bar.showMessage(f"Loaded {len(image_files)} file{'s' if len(image_files) != 1 else ''}",
+                                           3000)
+            else:
+                # Clear status if no files were loaded
+                self.status_bar.showMessage("No valid images found", 2000)
 
     def _on_clear_files(self):
         """Handle Clear All button click."""
@@ -222,6 +258,18 @@ class MainWindow(QMainWindow):
 
     def _on_file_selected(self, image_file):
         """Handle file selection in list."""
+        # Cancel any running output preview generation
+        if self.current_output_preview_worker:
+            logger.info(
+                f"Output preview cancelled (image changed to {image_file.filename})",
+                source="MainWindow"
+            )
+            self.current_output_preview_worker = None
+            self.preview.hide_loading_overlay()
+
+            # Turn off output preview mode when switching images
+            self.preview.toolbar.output_preview_btn.setChecked(False)
+
         self.preview.show_image(image_file)
         self.status_bar.showMessage(
             f"Viewing: {image_file.filename}", 2000
@@ -235,11 +283,6 @@ class MainWindow(QMainWindow):
         # Update original size for the new image
         self.settings_panel.output_widget.update_original_size(image_file.size_bytes)
         logger.debug(f"Original size updated: {image_file.size_str}", source="MainWindow")
-
-        # If output preview is ON, regenerate for new image
-        if self.preview.toolbar.output_preview_btn.isChecked():
-            logger.debug("Output preview active - regenerating for new image", source="MainWindow")
-            self._generate_output_preview()
 
     def _on_selection_changed(self):
         """Handle selection change."""
@@ -512,12 +555,9 @@ class MainWindow(QMainWindow):
         if loaded_files:
             first_new_index = len(self.file_list.image_files) - len(loaded_files)
             self.file_list.list_widget.setCurrentRow(first_new_index)
-
-        logger.info(
-            f"Added {len(loaded_files)} file(s) via drag and drop",
-            source="MainWindow"
-        )
-        self.status_bar.showMessage(f"Added {len(loaded_files)} file(s)", 2000)
+            logger.info(f"Added {len(loaded_files)} files via drag and drop", source="MainWindow")
+            # Update status bar after loading completes
+            self.status_bar.showMessage(f"Added {len(loaded_files)} file{'s' if len(loaded_files) != 1 else ''}", 3000)
 
     # ==========================================
     #  OUTPUT PREVIEW METHODS
@@ -612,9 +652,17 @@ class MainWindow(QMainWindow):
         )
 
         self.preview.show_loading_overlay("Generating output preview...")
+
+        # Connect cancel button NOW (after overlay is created)
+        self._connect_preview_cancel_button()
+
         self.status_bar.showMessage(f"Generating output preview for {selected_file.filename}...")
 
         worker = OutputPreviewWorker(selected_file.path, settings)
+
+        # Track this worker for cancellation
+        self.current_output_preview_worker = worker
+
         worker.signals.finished.connect(self._on_output_preview_ready)
         worker.signals.error.connect(self._on_output_preview_error)
         self.threadpool.start(worker)
@@ -623,6 +671,14 @@ class MainWindow(QMainWindow):
 
     def _on_output_preview_ready(self, pixmap, file_size_bytes):
         """Handle output preview generation complete (with caching and file size)."""
+        # Check if this worker was cancelled
+        if self.current_output_preview_worker is None:
+            logger.debug("Output preview result ignored (was cancelled)", source="MainWindow")
+            return
+
+        # Clear worker reference
+        self.current_output_preview_worker = None
+
         logger.success(
             f"Output preview ready: {pixmap.width()}×{pixmap.height()}, size: {file_size_bytes / 1024:.1f} KB",
             source="MainWindow"
@@ -647,7 +703,7 @@ class MainWindow(QMainWindow):
                     source="MainWindow"
                 )
 
-            self.output_preview_cache[cache_key] = (pixmap, file_size_bytes)  # Cache both
+            self.output_preview_cache[cache_key] = (pixmap, file_size_bytes)
             logger.info(
                 f"Cached output preview | Cache size: {len(self.output_preview_cache)}/{max_cache_size}",
                 source="MainWindow"
@@ -675,6 +731,14 @@ class MainWindow(QMainWindow):
 
     def _on_output_preview_error(self, error_msg: str):
         """Handle output preview generation error."""
+        # Check if this was already cancelled
+        if self.current_output_preview_worker is None:
+            logger.debug("Output preview error ignored (was cancelled)", source="MainWindow")
+            return
+
+        # Clear worker reference
+        self.current_output_preview_worker = None
+
         logger.error(f"Output preview generation failed: {error_msg}", source="MainWindow")
 
         self.preview.hide_loading_overlay()

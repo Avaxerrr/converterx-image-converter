@@ -1050,6 +1050,29 @@ QLabel#loadingOverlayLabel {
     background-color: transparent;
 }
 
+/* ============================================
+   LOADING OVERLAY CANCEL BUTTON
+   ============================================ */
+
+QPushButton#loadingCancelBtn {
+    background-color: #d32f2f;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 11pt;
+    font-weight: 600;
+}
+
+QPushButton#loadingCancelBtn:hover {
+    background-color: #f44336;
+}
+
+QPushButton#loadingCancelBtn:pressed {
+    background-color: #b71c1c;
+}
+
+
 /* ==========================================
    CONTEXT MENU STYLES
    ========================================== */
