@@ -722,12 +722,12 @@ SettingsPanel #reset-button {
     background-color: #3e3e42;
     border: 1px solid #505050;
     border-radius: 3px;
-    padding: 4px 10px;       /* Smaller padding */
-    min-height: 22px;        /* Smaller height */
+    padding: 4px 6px;       /* Smaller padding */
+    min-height: 20px;        /* Smaller height */
     max-height: 22px;
     font-weight: 600;
     font-size: 8pt;          /* Smaller font */
-    margin-top: 6px;
+    margin-bottom: 8px;
 }
 
 SettingsPanel #reset-button:hover {

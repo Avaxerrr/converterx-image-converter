@@ -139,13 +139,14 @@ class QuickGuidePage(BaseDocPage):
     """Quick start guide for new users."""
 
     def get_content(self) -> str:
-        """Return HTML content for quick guide."""
+        """Return HTML content for features documentation."""
         return """
         <style>
             body {
                 color: #CCCCCC;
                 font-size: 12px;
                 line-height: 1.6;
+                background-color: #1e1e1e;
             }
             h1 {
                 color: #4fc3f7;
@@ -163,11 +164,18 @@ class QuickGuidePage(BaseDocPage):
                 margin-top: 24px;
                 margin-bottom: 12px;
             }
+            h3 {
+                color: #AAAAAA;
+                font-size: 14px;
+                font-weight: 600;
+                margin-top: 16px;
+                margin-bottom: 8px;
+            }
             p {
                 margin: 8px 0;
                 color: #CCCCCC;
             }
-            ul, ol {
+            ul {
                 margin: 8px 0;
                 padding-left: 24px;
             }
@@ -183,9 +191,48 @@ class QuickGuidePage(BaseDocPage):
                 font-family: 'Consolas', 'Courier New', monospace;
                 font-size: 11px;
             }
-            .tip {
-                background-color: #1e3a1e;
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 12px 0;
+            }
+            th {
+                background-color: #2d2d30;
+                color: #4fc3f7;
+                padding: 8px;
+                text-align: left;
+                border: 1px solid #3e3e42;
+                font-size: 11px;
+            }
+            td {
+                padding: 8px;
+                border: 1px solid #3e3e42;
+                color: #CCCCCC;
+                font-size: 11px;
+            }
+            .feature-box {
+                background-color: transparent;
+                border: 1px solid #3e3e42;
+                border-radius: 4px;
+                padding: 14px;
+                margin: 12px 0;
+            }
+            .warning-box {
+                background-color: transparent;
+                border-left: 3px solid #ff9800;
+                border-top: 1px solid #3e3e42;
+                border-right: 1px solid #3e3e42;
+                border-bottom: 1px solid #3e3e42;
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 3px;
+            }
+            .info-box {
+                background-color: transparent;
                 border-left: 3px solid #4caf50;
+                border-top: 1px solid #3e3e42;
+                border-right: 1px solid #3e3e42;
+                border-bottom: 1px solid #3e3e42;
                 padding: 10px;
                 margin: 10px 0;
                 border-radius: 3px;
@@ -194,7 +241,7 @@ class QuickGuidePage(BaseDocPage):
         
         <h1>Quick Guide</h1>
         
-        <p>ConverterX converts images to modern formats like WebP and AVIF with advanced compression options.</p>
+        <p>ConverterX converts images to modern formats like WebP, AVIF, and HEIC with advanced compression options.</p>
         
         <h2>1. Add Images</h2>
         <ul>
@@ -203,7 +250,7 @@ class QuickGuidePage(BaseDocPage):
             <li>Right-click files for options (Open folder, Remove)</li>
         </ul>
         
-        <p><b>Input formats:</b> JPEG, PNG, WebP, AVIF, BMP, TIFF, GIF, ICO</p>
+        <p><b>Supported input formats (72 extensions):</b> JPEG, PNG, WebP, AVIF, HEIC/HEIF, BMP, TIFF, GIF, ICO, PSD, TGA, JPEG 2000, DDS, FITS, and many more professional/legacy formats.</p>
         
         <h2>2. Preview</h2>
         <p>Click any image in the file list to view it. Three preview modes available:</p>
@@ -341,26 +388,56 @@ class FeaturesPage(BaseDocPage):
                 color: #CCCCCC;
                 font-size: 11px;
             }
-            .feature-box {
-                background-color: #252526;
-                border: 1px solid #3e3e42;
-                border-radius: 4px;
-                padding: 14px;
-                margin: 12px 0;
+            .warning {
+                color: #ff9800;
+                font-weight: bold;
             }
-            .warning-box {
-                background-color: #3a2a1e;
-                border-left: 3px solid #ff9800;
-                padding: 10px;
-                margin: 10px 0;
-                border-radius: 3px;
+            .note {
+                color: #4caf50;
+                font-weight: bold;
             }
         </style>
-        
+
         <h1>Features</h1>
-        
+
+        <h2>Supported Input Formats</h2>
+
+        <p>ConverterX supports <b>72 file extensions</b> across <b>40 image formats</b> for import:</p>
+
+        <h3>Common Formats</h3>
+        <ul>
+            <li><b>JPEG:</b> .jpg, .jpeg, .jpe, .jfif</li>
+            <li><b>PNG:</b> .png, .apng</li>
+            <li><b>WebP:</b> .webp</li>
+            <li><b>AVIF:</b> .avif, .avifs</li>
+            <li><b>HEIC/HEIF:</b> .heic, .heif, .heics, .heifs, .hif (Apple iPhone format)</li>
+            <li><b>GIF:</b> .gif</li>
+            <li><b>BMP:</b> .bmp, .dib</li>
+            <li><b>TIFF:</b> .tif, .tiff</li>
+            <li><b>ICO:</b> .ico</li>
+        </ul>
+
+        <h3>Professional/Advanced Formats</h3>
+        <ul>
+            <li><b>JPEG 2000:</b> .jp2, .j2c, .j2k, .jpc, .jpf, .jpx</li>
+            <li><b>PSD:</b> .psd (Photoshop - flattened only)</li>
+            <li><b>TGA:</b> .tga, .icb, .vda, .vst (Targa)</li>
+            <li><b>DDS:</b> .dds (DirectDraw Surface)</li>
+            <li><b>FITS:</b> .fit, .fits (Astronomy)</li>
+            <li><b>EPS:</b> .eps, .ps (Vector/PostScript)</li>
+        </ul>
+
+        <h3>Legacy/Specialized Formats</h3>
+        <ul>
+            <li><b>SGI:</b> .sgi, .rgb, .rgba, .bw</li>
+            <li><b>PPM/PGM/PBM:</b> .ppm, .pgm, .pbm, .pfm, .pnm</li>
+            <li><b>PCX, MSP, PALM, PCD, QOI, PIXAR, SUN, WMF, XBM, XPM</b> and more</li>
+        </ul>
+
+        <p><span class="note">📝 Note:</span> Format support is dynamically detected from Pillow and installed plugins. If you install additional Pillow plugins, they will be automatically recognized.</p>
+
         <h2>Output Formats</h2>
-        
+
         <table>
             <tr>
                 <th>Format</th>
@@ -408,34 +485,32 @@ class FeaturesPage(BaseDocPage):
                 <td>Legacy compatibility, Windows wallpapers</td>
             </tr>
         </table>
-        
+
         <h2>Quality Control</h2>
-        
-        <div class="feature-box">
-            <h3>Quality Slider Mode</h3>
-            <ul>
-                <li>Range: 0-100</li>
-                <li>Higher = better quality, larger file</li>
-                <li>Recommended: 80-90 for photos</li>
-            </ul>
-            
-            <h3>Target File Size Mode</h3>
-            <ul>
-                <li>Set specific target size (e.g., 500 KB)</li>
-                <li>Algorithm automatically finds optimal quality</li>
-                <li>Tolerance: 5-20% (adjustable)</li>
-            </ul>
-            
-            <h3>Lossless Mode</h3>
-            <ul>
-                <li>Zero quality loss compression</li>
-                <li>Available for: WebP, AVIF, PNG</li>
-                <li>Larger files than lossy compression</li>
-            </ul>
-        </div>
-        
+
+        <h3>Quality Slider Mode</h3>
+        <ul>
+            <li>Range: 0-100</li>
+            <li>Higher = better quality, larger file</li>
+            <li>Recommended: 80-90 for photos</li>
+        </ul>
+
+        <h3>Target File Size Mode</h3>
+        <ul>
+            <li>Set specific target size (e.g., 500 KB)</li>
+            <li>Algorithm automatically finds optimal quality</li>
+            <li>Tolerance: 5-20% (adjustable)</li>
+        </ul>
+
+        <h3>Lossless Mode</h3>
+        <ul>
+            <li>Zero quality loss compression</li>
+            <li>Available for: WebP, AVIF, PNG</li>
+            <li>Larger files than lossy compression</li>
+        </ul>
+
         <h2>Resize Options</h2>
-        
+
         <table>
             <tr>
                 <th>Mode</th>
@@ -462,115 +537,103 @@ class FeaturesPage(BaseDocPage):
                 <td>Fit within max width × height box</td>
             </tr>
         </table>
-        
+
         <p><b>Resampling Algorithm:</b> Lanczos (high-quality for both upscaling and downscaling)</p>
-        
+
         <h2>Format-Specific Options</h2>
-        
-        <div class="feature-box">
-            <h3>WebP Settings</h3>
-            <ul>
-                <li><b>Method (0-6):</b> Compression method quality. Higher = better compression but slower. Default: 4</li>
-                <li><b>Subsampling:</b> Chroma subsampling mode (4:4:4, 4:2:0, etc.)</li>
-            </ul>
-            
-            <h3>AVIF Settings</h3>
-            <ul>
-                <li><b>Speed (0-10):</b> Encoding speed. Higher = faster but larger files. Default: 6</li>
-                <li><b>Range:</b> Full or Limited color range</li>
-            </ul>
-            
-            <h3>PNG Settings</h3>
-            <ul>
-                <li><b>Compression Level (0-9):</b> Higher = smaller files but slower. Default: 6</li>
-            </ul>
-            
-            <h3>TIFF Settings</h3>
-            <ul>
-                <li><b>Compression:</b> None, LZW (lossless), JPEG (lossy), PackBits</li>
-                <li><b>JPEG Quality:</b> Only when JPEG compression selected (1-100)</li>
-                <li><b>Note:</b> JPEG compression requires RGB mode (converts palette images automatically)</li>
-            </ul>
-            
-            <h3>GIF Settings</h3>
-            <ul>
-                <li><b>Optimize Palette:</b> Reduce file size by optimizing 256-color table</li>
-                <li><b>Note:</b> Limited to 256 colors, may show dithering on photos</li>
-            </ul>
-            
-            <h3>ICO Settings</h3>
-            <ul>
-                <li><b>Size:</b> 16-256 pixels (square icons only)</li>
-                <li><b>Non-square images:</b> Pad with transparency or crop to center</li>
-            </ul>
-            
-            <div class="warning-box">
-                <b>⚠️ ICO Limitation:</b> Pillow supports up to 256×256 pixels (standard BMP-based ICO format). For larger icons, use PNG format instead.
-            </div>
-            
-            <h3>BMP Settings</h3>
-            <ul>
-                <li>No compression options available (uncompressed format)</li>
-            </ul>
-        </div>
-        
+
+        <h3>WebP Settings</h3>
+        <ul>
+            <li><b>Method (0-6):</b> Compression method quality. Higher = better compression but slower. Default: 4</li>
+            <li><b>Subsampling:</b> Chroma subsampling mode (4:4:4, 4:2:0, etc.)</li>
+        </ul>
+
+        <h3>AVIF Settings</h3>
+        <ul>
+            <li><b>Speed (0-10):</b> Encoding speed. Higher = faster but larger files. Default: 6</li>
+            <li><b>Range:</b> Full or Limited color range</li>
+        </ul>
+
+        <h3>PNG Settings</h3>
+        <ul>
+            <li><b>Compression Level (0-9):</b> Higher = smaller files but slower. Default: 6</li>
+        </ul>
+
+        <h3>TIFF Settings</h3>
+        <ul>
+            <li><b>Compression:</b> None, LZW (lossless), JPEG (lossy), PackBits</li>
+            <li><b>JPEG Quality:</b> Only when JPEG compression selected (1-100)</li>
+            <li><b>Note:</b> JPEG compression requires RGB mode (converts palette images automatically)</li>
+        </ul>
+
+        <h3>GIF Settings</h3>
+        <ul>
+            <li><b>Optimize Palette:</b> Reduce file size by optimizing 256-color table</li>
+            <li><b>Note:</b> Limited to 256 colors, may show dithering on photos</li>
+        </ul>
+
+        <h3>ICO Settings</h3>
+        <ul>
+            <li><b>Size:</b> 16-256 pixels (square icons only)</li>
+            <li><b>Non-square images:</b> Pad with transparency or crop to center</li>
+        </ul>
+
+        <p><span class="warning">⚠️ ICO Limitation:</span> Pillow supports up to 256×256 pixels (standard BMP-based ICO format). For larger icons, use PNG format instead.</p>
+
+        <h3>BMP Settings</h3>
+        <ul>
+            <li>No compression options available (uncompressed format)</li>
+        </ul>
+
         <h2>Output Settings</h2>
-        
-        <div class="feature-box">
-            <h3>Output Location</h3>
-            <ul>
-                <li><b>Same as Source:</b> Save in same folder as original</li>
-                <li><b>Custom Folder:</b> Specify destination folder</li>
-                <li><b>Ask Every Time:</b> Choose location for each conversion</li>
-            </ul>
-            
-            <h3>Filename Templates</h3>
-            <ul>
-                <li><b>_converted:</b> photo.jpg → photo_converted.webp</li>
-                <li><b>_{format}:</b> photo.jpg → photo_webp.webp</li>
-                <li><b>_Q{quality}:</b> photo.jpg → photo_Q85.webp</li>
-                <li><b>Custom:</b> Your own suffix</li>
-            </ul>
-            
-            <p><b>Collision Handling:</b> Auto-increments filename if file exists (e.g., photo_converted_1.webp)</p>
-        </div>
-        
+
+        <h3>Output Location</h3>
+        <ul>
+            <li><b>Same as Source:</b> Save in same folder as original</li>
+            <li><b>Custom Folder:</b> Specify destination folder</li>
+            <li><b>Ask Every Time:</b> Choose location for each conversion</li>
+        </ul>
+
+        <h3>Filename Templates</h3>
+        <ul>
+            <li><b>_converted:</b> photo.jpg → photo_converted.webp</li>
+            <li><b>_{format}:</b> photo.jpg → photo_webp.webp</li>
+            <li><b>_Q{quality}:</b> photo.jpg → photo_Q85.webp</li>
+            <li><b>Custom:</b> Your own suffix</li>
+        </ul>
+
+        <p><b>Collision Handling:</b> Auto-increments filename if file exists (e.g., photo_converted_1.webp)</p>
+
         <h2>Batch Processing</h2>
-        
-        <div class="feature-box">
-            <ul>
-                <li>Process multiple images with same settings</li>
-                <li>Real-time progress tracking</li>
-                <li>Pause/Resume/Cancel controls</li>
-                <li>Statistics: Total files, success rate, space saved</li>
-                <li>Toggle window: <code>Ctrl+B</code></li>
-            </ul>
-        </div>
-        
+
+        <ul>
+            <li>Process multiple images with same settings</li>
+            <li>Real-time progress tracking</li>
+            <li>Pause/Resume/Cancel controls</li>
+            <li>Statistics: Total files, success rate, space saved</li>
+            <li>Toggle window: <code>Ctrl+B</code></li>
+        </ul>
+
         <h2>Preview Modes</h2>
-        
-        <div class="feature-box">
-            <ul>
-                <li><b>Preview:</b> Optimized thumbnail (max 1500px), cached for speed</li>
-                <li><b>HD:</b> Full resolution, separate cache</li>
-                <li><b>Output Preview:</b> Shows final result with quality/resize/lossless settings applied</li>
-            </ul>
-            
-            <p><b>Note:</b> Output Preview excludes target file size mode and some advanced format options for performance.</p>
-        </div>
-        
+
+        <ul>
+            <li><b>Preview:</b> Optimized thumbnail (max 1500px), cached for speed</li>
+            <li><b>HD:</b> Full resolution, separate cache</li>
+            <li><b>Output Preview:</b> Shows final result with quality/resize/lossless settings applied</li>
+        </ul>
+
+        <p><b>Note:</b> Output Preview excludes target file size mode and some advanced format options for performance.</p>
+
         <h2>Application Settings</h2>
-        
-        <div class="feature-box">
-            <p>Configure in App Settings dialog:</p>
-            
-            <ul>
-                <li><b>Performance:</b> Max concurrent workers for batch processing</li>
-                <li><b>Preview:</b> Cache sizes, max dimensions, debounce timing</li>
-                <li><b>Defaults:</b> Default quality, format, and output settings</li>
-            </ul>
-        </div>
-        
+
+        <p>Configure in App Settings dialog:</p>
+
+        <ul>
+            <li><b>Performance:</b> Max concurrent workers for batch processing</li>
+            <li><b>Preview:</b> Cache sizes, max dimensions, debounce timing</li>
+            <li><b>Defaults:</b> Default quality, format, and output settings</li>
+        </ul>
+
         <p style="margin-top: 40px; color: #858585; font-size: 11px;">
             All features are designed for speed and quality. Use Output Preview to compare settings before converting.
         </p>

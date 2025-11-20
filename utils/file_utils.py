@@ -6,11 +6,38 @@ from models.image_file import ImageFile
 from utils.logger import logger
 
 
-# Supported image formats
-SUPPORTED_FORMATS = [
-    '.jpg', '.jpeg', '.png', '.webp', '.avif',
-    '.tiff', '.tif', '.gif', '.bmp', '.ico'
-]
+def _get_pillow_supported_extensions() -> List[str]:
+    """
+    Dynamically get list of image extensions supported by current Pillow installation.
+
+    Returns:
+        List of lowercase file extensions (e.g., ['.jpg', '.png', '.heic'])
+    """
+    supported = set()
+
+    # Get all registered extensions from Pillow
+    for ext, format_name in Image.registered_extensions().items():
+        # Only include formats that Pillow can READ (has a decoder)
+        if format_name in Image.OPEN:
+            supported.add(ext.lower())
+
+    # Manually add common extension aliases that might not be in Pillow's registry
+    extension_aliases = {
+        '.jpeg': '.jpg',
+        '.tif': '.tiff',
+        '.heif': '.heic',  # HEIF is the container, HEIC is Apple's variant
+    }
+
+    # Add aliases if their base format is supported
+    for alias, base in extension_aliases.items():
+        if base in supported:
+            supported.add(alias)
+
+    return sorted(list(supported))
+
+
+# Dynamically populate supported formats based on what Pillow can actually handle
+SUPPORTED_FORMATS = _get_pillow_supported_extensions()
 
 
 def is_supported_image(file_path: Path) -> bool:

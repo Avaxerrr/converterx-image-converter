@@ -1,12 +1,26 @@
 import sys
 from pathlib import Path
 
+from pillow_heif import register_heif_opener
+register_heif_opener()
+
 import pillow_avif
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QFile, QTextStream
 from PySide6.QtGui import QFontDatabase, QFont, QIcon
 from ui.main_window import MainWindow
-import resources_rc  # Import compiled resources
+import assets  # Import compiled resources
+
+
+# DEBUG: Uncomment to check Pillow supported formats (useful after Pillow updates)
+# from PIL import Image
+# print("=" * 50)
+# print("DEBUG: Pillow registered extensions:")
+# for ext, fmt in sorted(Image.registered_extensions().items()):
+#     print(f"  {ext} -> {fmt}")
+# print("=" * 50)
+# print(f"DEBUG: Pillow can open these formats: {list(Image.OPEN.keys())}")
+# print("=" * 50)
 
 
 def load_custom_fonts(app: QApplication) -> str:

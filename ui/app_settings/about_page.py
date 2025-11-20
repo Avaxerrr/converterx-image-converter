@@ -165,14 +165,14 @@ class AboutPage(QWidget):
         # === Creator Info ===
         creator_group = QGroupBox("Creator")
         creator_layout = QVBoxLayout(creator_group)
-        creator_layout.setSpacing(10)
+        creator_layout.setContentsMargins(10, 8, 10, 16)
 
         creator_name = QLabel("Created by <b>Avaxerrr</b>")
         creator_name.setObjectName("creatorName")
 
         creator_desc = QLabel(
             "A powerful, intuitive image converter supporting modern formats "
-            "like WebP and AVIF with advanced compression options."
+            "like WebP, AVIF, and HEIC with advanced compression options."
         )
         creator_desc.setObjectName("creatorDesc")
         creator_desc.setWordWrap(True)
@@ -185,16 +185,9 @@ class AboutPage(QWidget):
         github_btn.setIcon(QIcon(":/icons/info.svg"))
         github_btn.clicked.connect(lambda: self._open_url("https://github.com/Avaxerrr"))
 
-        """""
-        portfolio_btn = QPushButton("Portfolio")
-        portfolio_btn.setObjectName("linkButton")
-        portfolio_btn.setIcon(QIcon(":/icons/info.svg"))
-        portfolio_btn.clicked.connect(lambda: self._open_url("https://your-portfolio.com"))
-        """""
-
         links_layout.addWidget(github_btn)
-        #links_layout.addWidget(portfolio_btn)
         links_layout.addStretch()
+        links_layout.setContentsMargins(0, 8, 0, 0)
 
         creator_layout.addWidget(creator_name)
         creator_layout.addWidget(creator_desc)
@@ -205,23 +198,27 @@ class AboutPage(QWidget):
         # === Technology Stack ===
         tech_group = QGroupBox("Built With")
         tech_layout = QVBoxLayout(tech_group)
-        tech_layout.setSpacing(5)
+        tech_layout.setSpacing(3)
+        tech_layout.setContentsMargins(10, 8, 10, 16)
 
-        tech_text = QTextBrowser()
-        tech_text.setObjectName("techText")
-        tech_text.setMaximumHeight(120)
-        tech_text.setOpenExternalLinks(False)
-        tech_text.setHtml("""
-            <ul style="color: #CCCCCC; font-size: 12px; line-height: 1.6;">
-                <li><b style="color: #4fc3f7;">PySide6 (Qt 6)</b> - Modern GUI framework</li>
-                <li><b style="color: #4fc3f7;">Pillow (PIL)</b> - Image processing library</li>
-                <li><b style="color: #4fc3f7;">pillow-avif-plugin</b> - AVIF format support</li>
-                <li><b style="color: #4fc3f7;">Python 3.10+</b> - Programming language</li>
-            </ul>
-        """)
+        # Create labels for each library
+        libs = [
+            ("PySide6 (Qt 6)", "Modern GUI framework"),
+            ("Pillow (PIL)", "Core image processing library"),
+            ("pillow-avif", "AVIF format support"),
+            ("pillow-heif", "HEIC/HEIF format support"),
+            ("psutil", "Performance monitoring"),
+            ("Python 3.10+", "Programming language"),
+        ]
 
-        tech_layout.addWidget(tech_text)
+        for lib_name, lib_desc in libs:
+            lib_label = QLabel(f"• <b style='color: #4fc3f7;'>{lib_name}</b> - {lib_desc}")
+            lib_label.setStyleSheet("color: #CCCCCC; font-size: 12px;")
+            lib_label.setWordWrap(True)
+            tech_layout.addWidget(lib_label)
+
         layout.addWidget(tech_group)
+
 
         # === License and Copyright ===
         license_group = QGroupBox("License")
@@ -229,7 +226,9 @@ class AboutPage(QWidget):
 
         license_text = QLabel(
             "© 2025 Avaxerrr. All rights reserved.\n\n"
-            "This software is provided \"as is\" without warranty of any kind."
+            "This software is provided \"as is\" without warranty of any kind.\n\n"
+            "This application uses PySide6, which is licensed under the LGPL v3.\n"
+            "Other libraries are used under their respective permissive licenses."
         )
         license_text.setObjectName("licenseText")
         license_text.setWordWrap(True)
@@ -242,7 +241,7 @@ class AboutPage(QWidget):
         # Set content and add to main layout
         scroll.setWidget(content)
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(2, 2, 2, 16)
         main_layout.addWidget(scroll)
 
     def _open_url(self, url: str):

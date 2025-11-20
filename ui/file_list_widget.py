@@ -272,10 +272,12 @@ class FileListWidget(QWidget):
         open_folder_action.triggered.connect(lambda: self._open_folder_location(image_file))
         menu.addAction(open_folder_action)
 
+        """ Disable this for now
         # Add "Edit" action (placeholder)
         edit_action = QAction("Edit Photo", self)
         edit_action.triggered.connect(lambda: self._edit_image(image_file))
         menu.addAction(edit_action)
+        """
 
         # Add separator
         menu.addSeparator()
