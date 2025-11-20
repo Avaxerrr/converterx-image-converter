@@ -1,25 +1,27 @@
 # ConverterX
 
-![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Python](https://img.shields.io/badge/python-3.8+-blue)
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![Privacy](https://img.shields.io/badge/privacy-100%25%20local-green)
-
-## Screenshots
-
 <p align="center">
-  <img width="49%" alt="Batch Processing Window" src="https://github.com/user-attachments/assets/9b5f8b46-052a-47af-8c6b-028e81e9aa1c" />
-  <img width="49%" alt="Format Selection & Settings" src="https://github.com/user-attachments/assets/d944a69e-685a-4323-857f-650037df1736" />
+  <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/python-3.8+-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/platform-Windows-blue?style=for-the-badge&logo=windows&logoColor=white" alt="Platform">
+  <img src="https://img.shields.io/badge/privacy-100%25%20local-green?style=for-the-badge&logo=shield&logoColor=white" alt="Privacy">
 </p>
 
 <p align="center">
-  <img width="49%" alt="ConverterX Main Interface" src="https://github.com/user-attachments/assets/984207cf-6299-4191-9be8-87dbf7032695" />
-  <img width="49%" alt="Real-Time Preview System" src="https://github.com/user-attachments/assets/35694890-9b4a-435f-813c-7c568d0c6b15" />
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/releases/latest">
+    <img src="https://img.shields.io/badge/⬇️_Download-Latest_Release-brightgreen?style=for-the-badge&logo=github&logoColor=white" alt="Download Latest Release">
+  </a>
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/issues">
+    <img src="https://img.shields.io/badge/🐛_Report-Bug-red?style=for-the-badge&logo=github&logoColor=white" alt="Report Bug">
+  </a>
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/discussions">
+    <img src="https://img.shields.io/badge/💡_Request-Feature-blue?style=for-the-badge&logo=github&logoColor=white" alt="Request Feature">
+  </a>
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/wiki">
+    <img src="https://img.shields.io/badge/📖_View-Documentation-orange?style=for-the-badge&logo=github&logoColor=white" alt="Documentation">
+  </a>
 </p>
 
-<p align="center">
-  <em>Professional image conversion with privacy-first local processing</em>
-</p>
 
 
 
