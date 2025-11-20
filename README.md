@@ -181,7 +181,7 @@ Unlike online converters that upload files to remote servers, ConverterX process
 
 ## License
 
-Apache License Version 2.0 - see [LICENSE](LICENSE) file.
+Apache License Version 2.0 - see [LICENSE](https://github.com/Avaxerrr/converterx-image-converter?tab=Apache-2.0-1-ov-file) file.
 
 ---
 
