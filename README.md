@@ -1,9 +1,39 @@
 # ConverterX
 
-![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Python](https://img.shields.io/badge/python-3.8+-blue)
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![Privacy](https://img.shields.io/badge/privacy-100%25%20local-green)
+
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows-blue?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/privacy-100%25%20local-green?style=for-the-badge" alt="Privacy">
+  <img src="https://img.shields.io/badge/free-forever-green?style=for-the-badge" alt="Free Forever">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/releases/latest">
+    <img src="https://img.shields.io/badge/download-latest%20release-brightgreen?style=for-the-badge" alt="Download">
+  </a>
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/issues/new?labels=bug">
+    <img src="https://img.shields.io/badge/bug%20report-report%20issue-red?style=for-the-badge" alt="Bug Report">
+  </a>
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/issues/new?labels=enhancement">
+    <img src="https://img.shields.io/badge/feature%20request-suggest%20feature-blue?style=for-the-badge" alt="Feature Request">
+  </a>
+</p>
+
+
+
+<p align="center">
+  <img width="49%" alt="Batch Processing Window" src="https://github.com/user-attachments/assets/9b5f8b46-052a-47af-8c6b-028e81e9aa1c" />
+  <img width="49%" alt="Format Selection & Settings" src="https://github.com/user-attachments/assets/d944a69e-685a-4323-857f-650037df1736" />
+</p>
+
+<p align="center">
+  <img width="49%" alt="ConverterX Main Interface" src="https://github.com/user-attachments/assets/984207cf-6299-4191-9be8-87dbf7032695" />
+  <img width="49%" alt="Real-Time Preview System" src="https://github.com/user-attachments/assets/35694890-9b4a-435f-813c-7c568d0c6b15" />
+</p>
+
+<p align="center">
+  <em>Professional image conversion with privacy-first local processing</em>
+</p>
 
 
 **Professional image format converter with batch processing and real-time preview. 100% local processing - your images never leave your computer.**
@@ -75,10 +105,6 @@ Five modes: None, Scale by Percentage (10-100%), Fit by Width, Fit by Height, Fi
 
 **Filename templates:** Original + "_converted", Original + "_WebP" (format), Original + "_Q85" (quality), Custom suffix, Auto-increment prevention
 
-### Interface
-
-Clean three-panel layout (File List | Preview | Settings). Drag-and-drop support, dark theme, Inter font with anti-aliasing. Keyboard shortcuts: F12 (logs), Ctrl+B (batch window).
-
 ---
 
 ## Why ConverterX?
@@ -106,26 +132,12 @@ Unlike online converters that upload files to remote servers, ConverterX process
 
 ## Use Cases
 
-### Privacy-Sensitive
-
-- **Medical imaging** - HIPAA-compliant conversion without cloud uploads
-- **Legal documentation** - Process evidence photos without third-party exposure
-- **Corporate confidentiality** - Handle proprietary materials securely
 - **Personal privacy** - Convert ID documents without tracking
-
-### General
-
 - **Web optimization** - Convert to WebP/AVIF for 30-50% size reduction
 - **Batch migration** - Convert entire libraries from legacy to modern formats
 - **Icon generation** - Create ICO files with automatic square enforcement
 - **Target file size** - Achieve specific sizes with iterative compression
 - **HEIF/HEIC conversion** - Convert iPhone photos to universal formats
-
----
-
-## Screenshots
-
-*Coming soon*
 
 ---
 
@@ -176,7 +188,7 @@ Unlike online converters that upload files to remote servers, ConverterX process
 
 ## License
 
-Apache License Version 2.0 - see [LICENSE](LICENSE) file.
+Apache License Version 2.0 - see [LICENSE](https://github.com/Avaxerrr/converterx-image-converter?tab=Apache-2.0-1-ov-file) file.
 
 ---
 
