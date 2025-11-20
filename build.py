@@ -1,7 +1,7 @@
 """
 Nuitka Build Script for ConverterX
 
-Builds a standalone folder distribution for faster startup.
+Builds either a single executable file or standalone folder distribution.
 """
 
 import subprocess
@@ -10,11 +10,32 @@ import platform
 import shutil
 from pathlib import Path
 
-def build():
-    """Build ConverterX with Nuitka in standalone mode."""
 
+def get_build_mode():
+    """Prompt user to choose build mode."""
     print("=" * 60)
-    print("Building ConverterX with Nuitka (Standalone Mode)...")
+    print("ConverterX Build Configuration")
+    print("=" * 60)
+    print("\nChoose build mode:")
+    print("  1. One-File  - Single executable (slower startup, easier to distribute)")
+    print("  2. Standalone - Folder with dependencies (faster startup, larger)")
+    print("=" * 60)
+
+    while True:
+        choice = input("\nEnter your choice (1 or 2): ").strip()
+        if choice == "1":
+            return "onefile"
+        elif choice == "2":
+            return "standalone"
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+
+
+def build(mode):
+    """Build ConverterX with Nuitka in specified mode."""
+
+    print("\n" + "=" * 60)
+    print(f"Building ConverterX with Nuitka ({mode.upper()} mode)...")
     print("=" * 60)
 
     # Clean previous build
@@ -26,11 +47,10 @@ def build():
     # Common arguments for all platforms
     common_args = [
         sys.executable, "-m", "nuitka",
-        "--standalone",
         "--enable-plugin=pyside6",
 
         # Include resource files
-        "--include-data-file=resources_rc.py=resources_rc.py",
+        "--include-data-file=assets.py=assets.py",
 
         # Include required packages
         "--include-package=pillow_avif",
@@ -55,6 +75,12 @@ def build():
         # Optimization
         "--assume-yes-for-downloads",
     ]
+
+    # Add mode-specific argument
+    if mode == "onefile":
+        common_args.append("--onefile")
+    else:  # standalone
+        common_args.append("--standalone")
 
     # Platform-specific arguments
     if platform.system() == "Windows":
@@ -93,7 +119,11 @@ def build():
 
     print("\nRunning Nuitka with the following command:")
     print(" ".join(cmd))
-    print("\nThis may take 3-5 minutes...\n")
+
+    if mode == "onefile":
+        print("\nThis may take 5-10 minutes (one-file builds are slower)...\n")
+    else:
+        print("\nThis may take 3-5 minutes...\n")
 
     try:
         result = subprocess.run(cmd, check=True)
@@ -101,31 +131,53 @@ def build():
         print("✓ Build completed successfully!")
         print("=" * 60)
 
-        # Rename executable
-        exe_path = dist_dir / "main.dist" / exe_name
-        final_path = dist_dir / "main.dist" / final_name
+        # Handle output based on mode
+        if mode == "onefile":
+            # One-file mode: single executable in dist/
+            exe_path = dist_dir / exe_name
+            final_path = dist_dir / final_name
 
-        if exe_path.exists() and exe_path != final_path:
-            exe_path.rename(final_path)
-            print(f"\n✓ Renamed {exe_name} → {final_name}")
+            if exe_path.exists() and exe_path != final_path:
+                exe_path.rename(final_path)
+                print(f"\n✓ Renamed {exe_name} → {final_name}")
 
-        # Show output info
-        if final_path.exists():
-            folder_size = sum(f.stat().st_size for f in (dist_dir / "main.dist").rglob('*') if f.is_file())
-            print(f"\nDistribution folder: {(dist_dir / 'main.dist').absolute()}")
-            print(f"Executable: {final_path.absolute()}")
-            print(f"Total size: {folder_size / (1024*1024):.2f} MB")
+            if final_path.exists():
+                exe_size = final_path.stat().st_size
+                print(f"\nExecutable: {final_path.absolute()}")
+                print(f"Size: {exe_size / (1024*1024):.2f} MB")
 
-            # Count files
-            file_count = len(list((dist_dir / "main.dist").rglob('*')))
-            print(f"Total files: {file_count}")
+                print("\n" + "=" * 60)
+                print("Single executable is ready!")
+                print("=" * 60)
+                print("\nTo distribute:")
+                print(f"  - Just share the '{final_name}' file")
+                print("  - Users can run it directly (no installation needed)")
 
-        print("\n" + "=" * 60)
-        print("Distribution is ready for deployment!")
-        print("=" * 60)
-        print("\nTo distribute:")
-        print("  1. Zip the entire 'dist/main.dist' folder")
-        print("  2. Or create an installer with Inno Setup / NSIS")
+        else:  # standalone
+            # Standalone mode: folder with dependencies
+            exe_path = dist_dir / "main.dist" / exe_name
+            final_path = dist_dir / "main.dist" / final_name
+
+            if exe_path.exists() and exe_path != final_path:
+                exe_path.rename(final_path)
+                print(f"\n✓ Renamed {exe_name} → {final_name}")
+
+            if final_path.exists():
+                folder_size = sum(f.stat().st_size for f in (dist_dir / "main.dist").rglob('*') if f.is_file())
+                print(f"\nDistribution folder: {(dist_dir / 'main.dist').absolute()}")
+                print(f"Executable: {final_path.absolute()}")
+                print(f"Total size: {folder_size / (1024*1024):.2f} MB")
+
+                # Count files
+                file_count = len(list((dist_dir / "main.dist").rglob('*')))
+                print(f"Total files: {file_count}")
+
+                print("\n" + "=" * 60)
+                print("Distribution folder is ready!")
+                print("=" * 60)
+                print("\nTo distribute:")
+                print("  1. Zip the entire 'dist/main.dist' folder")
+                print("  2. Or create an installer with Inno Setup / NSIS")
 
         return 0
 
@@ -146,4 +198,5 @@ def build():
 
 
 if __name__ == "__main__":
-    sys.exit(build())
+    mode = get_build_mode()
+    sys.exit(build(mode))
