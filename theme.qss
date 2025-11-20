@@ -512,23 +512,20 @@ QStatusBar {
 /* Main widget container */
 QWidget#performanceWidget {
     background: transparent;
-    padding: 0px;
 }
 
 /* Status bar specific styling */
 QStatusBar QWidget#performanceWidget QLabel#performanceCpuLabel,
 QStatusBar QWidget#performanceWidget QLabel#performanceRamLabel {
     color: #B2B2B2;
-    font-size: 9pt;
+    font-size: 8pt;
     font-weight: 500;
-    padding: 0px 1px;
     background: transparent;
 }
 
 QStatusBar QWidget#performanceWidget QLabel#performanceSeparator {
     color: #707070;
-    font-size: 9pt;
-    padding: 0px 2px;
+    font-size: 8pt;
     background: transparent;
 }
 
@@ -955,11 +952,6 @@ SettingsPanel #resize-preview-label {
     margin-top: 4px;
 }
 
-/* Resize Mode ComboBox - Add bottom spacing */
-QComboBox#resizeModeCombo {
-    margin-bottom: 8px;
-}
-
 /* Resize Output Label - Add bottom spacing */
 QLabel#resize-preview-label {
     margin-bottom: 8px;
@@ -1092,29 +1084,6 @@ QLabel#loadingOverlayLabel {
     font-weight: bold;
     background-color: transparent;
 }
-
-/* ============================================
-   LOADING OVERLAY CANCEL BUTTON
-   ============================================ */
-
-QPushButton#loadingCancelBtn {
-    background-color: #d32f2f;
-    color: #ffffff;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 11pt;
-    font-weight: 600;
-}
-
-QPushButton#loadingCancelBtn:hover {
-    background-color: #f44336;
-}
-
-QPushButton#loadingCancelBtn:pressed {
-    background-color: #b71c1c;
-}
-
 
 /* ==========================================
    CONTEXT MENU STYLES

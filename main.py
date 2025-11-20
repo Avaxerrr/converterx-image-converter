@@ -1,20 +1,7 @@
 import sys
 from pathlib import Path
 
-# ===================================================================
-# CRITICAL: Import AVIF plugin BEFORE any PIL/Pillow imports
-# This must be the very first thing after standard library imports
-# ===================================================================
-try:
-    import pillow_avif
-
-    print("✓ AVIF support enabled")
-except ImportError:
-    print("⚠ Warning: pillow-avif-plugin not installed")
-    print("  AVIF files cannot be imported/previewed")
-    print("  Install with: pip install pillow-avif-plugin")
-# ===================================================================
-
+import pillow_avif
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QFile, QTextStream
 from PySide6.QtGui import QFontDatabase, QFont, QIcon

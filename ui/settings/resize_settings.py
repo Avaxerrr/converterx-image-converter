@@ -43,6 +43,7 @@ class ResizeSettingsWidget(QWidget):
         mode_layout.addWidget(self.resize_mode_combo, 1)
 
         layout.addLayout(mode_layout)
+        mode_layout.setContentsMargins(0, 0, 0, 8)  # 12px bottom margin
 
         # Original dimensions label (hidden by default)
         self.original_label = QLabel("Original: —")

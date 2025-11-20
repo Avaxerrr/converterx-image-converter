@@ -48,7 +48,7 @@ class PerformanceWidget(QWidget):
         """Build the widget UI."""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 2, 8, 2)
-        layout.setSpacing(12)
+        layout.setSpacing(4)
 
         # CPU label
         self.cpu_label = QLabel("CPU: --")
