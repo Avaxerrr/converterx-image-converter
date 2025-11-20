@@ -183,7 +183,7 @@ class AboutPage(QWidget):
         github_btn = QPushButton("GitHub")
         github_btn.setObjectName("linkButton")
         github_btn.setIcon(QIcon(":/icons/info.svg"))
-        github_btn.clicked.connect(lambda: self._open_url("https://github.com/Avaxerrr"))
+        github_btn.clicked.connect(lambda: self._open_url("https://github.com/Avaxerrr/converterx-image-converter"))
 
         links_layout.addWidget(github_btn)
         links_layout.addStretch()
