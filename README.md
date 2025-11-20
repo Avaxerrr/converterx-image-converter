@@ -1,26 +1,24 @@
 # ConverterX
 
+
 <p align="center">
-  <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/python-3.8+-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/platform-Windows-blue?style=for-the-badge&logo=windows&logoColor=white" alt="Platform">
-  <img src="https://img.shields.io/badge/privacy-100%25%20local-green?style=for-the-badge&logo=shield&logoColor=white" alt="Privacy">
+  <img src="https://img.shields.io/badge/platform-Windows-blue?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/privacy-100%25%20local-green?style=for-the-badge" alt="Privacy">
+  <img src="https://img.shields.io/badge/free-forever-green?style=for-the-badge" alt="Free Forever">
 </p>
 
 <p align="center">
   <a href="https://github.com/Avaxerrr/converterx-image-converter/releases/latest">
-    <img src="https://img.shields.io/badge/⬇️_Download-Latest_Release-brightgreen?style=for-the-badge&logo=github&logoColor=white" alt="Download Latest Release">
+    <img src="https://img.shields.io/badge/download-latest%20release-brightgreen?style=for-the-badge" alt="Download">
   </a>
-  <a href="https://github.com/Avaxerrr/converterx-image-converter/issues">
-    <img src="https://img.shields.io/badge/🐛_Report-Bug-red?style=for-the-badge&logo=github&logoColor=white" alt="Report Bug">
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/issues/new?labels=bug">
+    <img src="https://img.shields.io/badge/bug%20report-report%20issue-red?style=for-the-badge" alt="Bug Report">
   </a>
-  <a href="https://github.com/Avaxerrr/converterx-image-converter/discussions">
-    <img src="https://img.shields.io/badge/💡_Request-Feature-blue?style=for-the-badge&logo=github&logoColor=white" alt="Request Feature">
-  </a>
-  <a href="https://github.com/Avaxerrr/converterx-image-converter/wiki">
-    <img src="https://img.shields.io/badge/📖_View-Documentation-orange?style=for-the-badge&logo=github&logoColor=white" alt="Documentation">
+  <a href="https://github.com/Avaxerrr/converterx-image-converter/issues/new?labels=enhancement">
+    <img src="https://img.shields.io/badge/feature%20request-suggest%20feature-blue?style=for-the-badge" alt="Feature Request">
   </a>
 </p>
+
 
 
 <p align="center">
@@ -140,12 +138,6 @@ Unlike online converters that upload files to remote servers, ConverterX process
 - **Icon generation** - Create ICO files with automatic square enforcement
 - **Target file size** - Achieve specific sizes with iterative compression
 - **HEIF/HEIC conversion** - Convert iPhone photos to universal formats
-
----
-
-## Screenshots
-
-*Coming soon*
 
 ---
 
