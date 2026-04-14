@@ -146,9 +146,9 @@ class PreviewWidget(QWidget):
         needs_hd = max_dimension > self.PREVIEW_MAX_DIMENSION
         return needs_hd
 
-    def _load_image_with_exif_fix(self, image_path: Path, preview_mode: bool = False) -> QPixmap:
+    def _load_image_with_exif_fix_legacy(self, image_path: Path, preview_mode: bool = False) -> QPixmap:
         """
-        Load image using PIL (supports AVIF) and convert to QPixmap with EXIF orientation fix.
+        Legacy Pillow-only loader kept only for reference during SVG rollout.
 
         Args:
             image_path: Path to the image file
