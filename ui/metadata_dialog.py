@@ -3,6 +3,7 @@
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
 from PySide6.QtCore import Qt
 from models.image_file import ImageFile
+from utils.image_loader import is_svg_file
 
 try:
     from PIL import Image
@@ -57,7 +58,9 @@ class MetadataDialog(QDialog):
         html += f"<tr><td><b>File Size:</b></td><td>{image_file.size_str}</td></tr>"
         html += "</table>"
 
-        if EXIF_AVAILABLE:
+        if is_svg_file(image_file.path):
+            html += "<br><p style='color: #808080;'>SVG files do not contain EXIF metadata</p>"
+        elif EXIF_AVAILABLE:
             try:
                 with Image.open(image_file.path) as img:
                     exif_data = img._getexif()

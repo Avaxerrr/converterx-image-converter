@@ -17,6 +17,7 @@ from ui.metadata_dialog import MetadataDialog
 from .image_graphics_view import ImageGraphicsView
 from .preview_toolbar import PreviewToolbar
 from .preview_types import PreviewMode
+from utils.image_loader import load_pil_image
 from utils.logger import logger
 from ui.widgets.loading_spinner import LoadingSpinner
 from typing import TYPE_CHECKING, Optional
@@ -218,6 +219,59 @@ class PreviewWidget(QWidget):
         except Exception as e:
             logger.error(f"Failed to load image {image_path.name}: {e}", "ImageLoader")
             return QPixmap()  # Return empty pixmap on error
+
+    def _load_image_with_exif_fix(self, image_path: Path, preview_mode: bool = False) -> QPixmap:
+        """
+        Load image using the shared loader and convert it to QPixmap.
+
+        Args:
+            image_path: Path to the image file
+            preview_mode: If True, downscale to PREVIEW_MAX_DIMENSION for performance
+        """
+        try:
+            if preview_mode:
+                pil_image = load_pil_image(
+                    image_path,
+                    max_dimension=self.PREVIEW_MAX_DIMENSION
+                )
+            else:
+                pil_image = load_pil_image(image_path)
+
+            logger.debug(
+                f"Loaded preview image: {image_path.name} ({pil_image.width}x{pil_image.height})",
+                "ImageLoader"
+            )
+
+            if pil_image.mode not in ('RGB', 'RGBA'):
+                if pil_image.mode == 'P':
+                    pil_image = pil_image.convert('RGBA')
+                else:
+                    pil_image = pil_image.convert('RGB')
+
+            if pil_image.mode == 'RGBA':
+                data = pil_image.tobytes('raw', 'RGBA')
+                qimage = QImage(
+                    data,
+                    pil_image.width,
+                    pil_image.height,
+                    pil_image.width * 4,
+                    QImage.Format_RGBA8888
+                )
+            else:
+                data = pil_image.tobytes('raw', 'RGB')
+                qimage = QImage(
+                    data,
+                    pil_image.width,
+                    pil_image.height,
+                    pil_image.width * 3,
+                    QImage.Format_RGB888
+                )
+
+            return QPixmap.fromImage(qimage.copy())
+
+        except Exception as e:
+            logger.error(f"Failed to load image {image_path.name}: {e}", "ImageLoader")
+            return QPixmap()
 
     def _get_cached_or_load(self, image_path: Path, mode: PreviewMode) -> QPixmap:
         """Get image from cache or load it (with caching)."""
