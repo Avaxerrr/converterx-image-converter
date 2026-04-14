@@ -88,10 +88,10 @@ def build(mode):
             "--windows-icon-from-ico=app_icon.ico",
             "--company-name=Avaxerrr",
             "--product-name=ConverterX",
-            "--file-version=1.0.0",
-            "--product-version=1.0.0",
+            "--file-version=1.1.0",
+            "--product-version=1.1.0",
             "--file-description=Modern Image Format Converter",
-            "--copyright=Copyright (c) 2025 Avaxerrr",
+            "--copyright=Copyright (c) 2026 Avaxerrr",
             "--windows-console-mode=disable",
         ]
         exe_name = "main.exe"
@@ -100,7 +100,7 @@ def build(mode):
         platform_args = [
             "--macos-app-icon=app_icon.icns",
             "--macos-app-name=ConverterX",
-            "--macos-app-version=1.0.0",
+            "--macos-app-version=1.1.0",
         ]
         exe_name = "main.bin"
         final_name = "ConverterX"

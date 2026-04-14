@@ -36,7 +36,7 @@
 </p>
 
 
-**Professional image format converter with batch processing and real-time preview. 100% local processing - your images never leave your computer.**
+**Professional image format converter with batch processing, SVG input support, and real-time preview. 100% local processing - your images never leave your computer.**
 
 ---
 
@@ -64,7 +64,7 @@ Feature-rich desktop image converter built with Python and PySide6. Convert imag
 ### Format Support
 
 **Input: 30+ formats**
-- Common: JPEG, PNG, BMP, TIFF, GIF, WebP, AVIF, HEIF/HEIC
+- Common: JPEG, PNG, BMP, TIFF, GIF, WebP, AVIF, HEIF/HEIC, SVG
 - Additional: PCX, PPM, PGM, PBM, SGI, TGA, ICO, CUR, and more
 
 **Output: 8 formats**
@@ -88,6 +88,8 @@ See your converted output before processing. Privacy-safe previews generated ent
 ### Resize Options
 
 Five modes: None, Scale by Percentage (10-100%), Fit by Width, Fit by Height, Fit to Dimensions. Optional upscaling prevention with pixel-perfect dimension control.
+
+For SVG input, resize settings are used as the direct render target, so large exports stay sharp instead of being rasterized small and enlarged afterward.
 
 ### Quality Control
 
@@ -136,6 +138,7 @@ Unlike online converters that upload files to remote servers, ConverterX process
 - **Web optimization** - Convert to WebP/AVIF for 30-50% size reduction
 - **Batch migration** - Convert entire libraries from legacy to modern formats
 - **Icon generation** - Create ICO files with automatic square enforcement
+- **SVG to raster exports** - Turn vector artwork into crisp PNG, WebP, AVIF, JPEG, TIFF, BMP, GIF, or ICO output
 - **Target file size** - Achieve specific sizes with iterative compression
 - **HEIF/HEIC conversion** - Convert iPhone photos to universal formats
 

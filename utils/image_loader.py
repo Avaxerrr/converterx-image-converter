@@ -9,6 +9,7 @@ from PIL import Image, ImageOps
 from PySide6.QtCore import QBuffer, QIODevice
 from PySide6.QtGui import QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
+from utils.logger import logger, LogLevel
 
 
 SVG_SUFFIX = ".svg"
@@ -79,10 +80,21 @@ def _load_svg_as_pil_image(
 ) -> Image.Image:
     """Render an SVG file into a PIL RGBA image."""
     renderer = _create_svg_renderer(file_path)
+    intrinsic_width, intrinsic_height = _resolve_svg_size(renderer)
     render_width, render_height = _determine_render_size(
         renderer,
         target_size=target_size,
         max_dimension=max_dimension
+    )
+
+    logger.log(
+        LogLevel.DEBUG,
+        (
+            f"Rendering SVG {file_path.name}: intrinsic={intrinsic_width}x{intrinsic_height}, "
+            f"target_size={target_size}, max_dimension={max_dimension}, "
+            f"actual_render={render_width}x{render_height}"
+        ),
+        "ImageLoader"
     )
 
     qimage = QImage(render_width, render_height, QImage.Format.Format_ARGB32)
