@@ -153,6 +153,7 @@ Unlike online converters that upload files to remote servers, ConverterX process
 | WebP | 1-100 | Both | Yes | Yes | Modern web |
 | AVIF | 1-100 | Both | Yes | No | Next-gen web |
 | HEIF/HEIC | Input only | - | - | - | iPhone photos |
+| SVG | Input only | Vector rasterized at target size | Yes | No | Logos, icons, vector artwork |
 | TIFF | Multiple | Multiple | Yes | No | Professional/print |
 | GIF | Palette | Lossless | Yes | Yes | Simple animations |
 | BMP | None | None | No | No | Uncompressed |
@@ -163,7 +164,10 @@ Unlike online converters that upload files to remote servers, ConverterX process
 ## Technical Stack
 
 - **PySide6/Qt** - Cross-platform GUI framework
+- **QtSvg** - SVG rendering for sharp raster exports
 - **Pillow** - Image processing library
+- **pillow-avif-plugin** - AVIF format support
+- **pillow-heif** - HEIF/HEIC format support
 - **QThreadPool** - Multi-threaded conversion
 - **QSettings** - Local configuration storage
 
