@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 from PIL import Image
 from models.image_file import ImageFile
+from utils.image_loader import get_image_info, is_svg_file
 
 from utils.logger import logger
 
@@ -33,6 +34,8 @@ def _get_pillow_supported_extensions() -> List[str]:
         if base in supported:
             supported.add(alias)
 
+    supported.add('.svg')
+
     return sorted(list(supported))
 
 
@@ -59,17 +62,15 @@ def load_image_file(file_path: Path) -> Optional[ImageFile]:
         # Get file size
         size_bytes = file_path.stat().st_size
 
-        # Try to open with PIL to get dimensions
+        # Try to read dimensions/format from raster or SVG helper
         try:
-            with Image.open(file_path) as img:
-                width, height = img.size
-                format_name = img.format
+            width, height, format_name = get_image_info(file_path)
         except Exception as e:
             # LOG: Failed to read image metadata (corrupt file, unsupported format, etc.)
             logger.warning(f"Could not read metadata for {file_path.name}: {str(e)}", source="FileLoader")
             print(f"Warning: Could not read image metadata for {file_path}: {e}")
             width, height = None, None
-            format_name = file_path.suffix.upper().replace('.', '')
+            format_name = "SVG" if is_svg_file(file_path) else file_path.suffix.upper().replace('.', '')
 
         return ImageFile(
             path=file_path,

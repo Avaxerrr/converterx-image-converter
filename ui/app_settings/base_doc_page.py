@@ -241,7 +241,7 @@ class QuickGuidePage(BaseDocPage):
         
         <h1>Quick Guide</h1>
         
-        <p>ConverterX converts images to modern formats like WebP, AVIF, and HEIC with advanced compression options.</p>
+        <p>ConverterX converts images to modern formats like WebP, AVIF, and HEIC, and it can rasterize SVG artwork directly into sharp pixel output.</p>
         
         <h2>1. Add Images</h2>
         <ul>
@@ -250,7 +250,7 @@ class QuickGuidePage(BaseDocPage):
             <li>Right-click files for options (Open folder, Remove)</li>
         </ul>
         
-        <p><b>Supported input formats (72 extensions):</b> JPEG, PNG, WebP, AVIF, HEIC/HEIF, BMP, TIFF, GIF, ICO, PSD, TGA, JPEG 2000, DDS, FITS, and many more professional/legacy formats.</p>
+        <p><b>Supported input formats:</b> JPEG, PNG, WebP, AVIF, HEIC/HEIF, SVG, BMP, TIFF, GIF, ICO, PSD, TGA, JPEG 2000, DDS, FITS, and many more professional/legacy formats.</p>
         
         <h2>2. Preview</h2>
         <p>Click any image in the file list to view it. Three preview modes available:</p>
@@ -288,17 +288,21 @@ class QuickGuidePage(BaseDocPage):
             <li><b>Scale by %</b> - Resize by percentage (e.g., 50% = half size)</li>
             <li><b>Fit to Width</b> - Resize to specific width, maintain aspect ratio</li>
             <li><b>Fit to Height</b> - Resize to specific height, maintain aspect ratio</li>
-            <li><b>Fit to Dimensions</b> - Fit within max width × height box</li>
+            <li><b>Fit to Dimensions</b> - Fit within max width &times; height box</li>
         </ul>
         
         <div class="tip">
             <b>Technical Note:</b> All resizing uses Lanczos resampling for high-quality results in both upscaling and downscaling.
         </div>
         
+        <div class="info-box">
+            <b>SVG Note:</b> When an SVG is resized, ConverterX renders the vector artwork directly at the requested output size before export or Output Preview. That is why very large SVG exports stay sharp instead of looking upscaled.
+        </div>
+        
         <h2>5. Convert</h2>
         <ul>
-            <li><b>Single file:</b> Select image → Click "Convert"</li>
-            <li><b>Batch:</b> Add multiple files → Click "Convert All"</li>
+            <li><b>Single file:</b> Select image -&gt; Click "Convert"</li>
+            <li><b>Batch:</b> Add multiple files -&gt; Click "Convert All"</li>
             <li>Monitor batch progress with <code>Ctrl+B</code> (Batch Window)</li>
         </ul>
         
@@ -402,7 +406,7 @@ class FeaturesPage(BaseDocPage):
 
         <h2>Supported Input Formats</h2>
 
-        <p>ConverterX supports <b>72 file extensions</b> across <b>40 image formats</b> for import:</p>
+        <p>ConverterX supports a broad set of raster formats plus SVG vector input for import.</p>
 
         <h3>Common Formats</h3>
         <ul>
@@ -411,6 +415,7 @@ class FeaturesPage(BaseDocPage):
             <li><b>WebP:</b> .webp</li>
             <li><b>AVIF:</b> .avif, .avifs</li>
             <li><b>HEIC/HEIF:</b> .heic, .heif, .heics, .heifs, .hif (Apple iPhone format)</li>
+            <li><b>SVG:</b> .svg (vector input rendered to raster output at the final target size)</li>
             <li><b>GIF:</b> .gif</li>
             <li><b>BMP:</b> .bmp, .dib</li>
             <li><b>TIFF:</b> .tif, .tiff</li>
@@ -434,7 +439,14 @@ class FeaturesPage(BaseDocPage):
             <li><b>PCX, MSP, PALM, PCD, QOI, PIXAR, SUN, WMF, XBM, XPM</b> and more</li>
         </ul>
 
-        <p><span class="note">📝 Note:</span> Format support is dynamically detected from Pillow and installed plugins. If you install additional Pillow plugins, they will be automatically recognized.</p>
+        <p><span class="note">Note:</span> Most input format support is dynamically detected from Pillow and installed plugins. SVG is handled through Qt's SVG renderer so vector files can be previewed and exported through the same workflow.</p>
+
+        <h3>SVG Input Behavior</h3>
+        <ul>
+            <li>SVG is supported as an input format and can be exported to any raster output format already supported by the app.</li>
+            <li>When resize is enabled, ConverterX renders the SVG directly at the planned output dimensions instead of rasterizing first and scaling afterward.</li>
+            <li>Output Preview uses the same SVG render plan as final export, so preview and saved output stay aligned.</li>
+        </ul>
 
         <h2>Output Formats</h2>
 
@@ -477,7 +489,7 @@ class FeaturesPage(BaseDocPage):
             <tr>
                 <td><b>ICO</b></td>
                 <td>Uncompressed (BMP-based)</td>
-                <td>Windows application icons (max 256×256)</td>
+                <td>Windows application icons (max 256&times;256)</td>
             </tr>
             <tr>
                 <td><b>BMP</b></td>
@@ -534,11 +546,12 @@ class FeaturesPage(BaseDocPage):
             </tr>
             <tr>
                 <td><b>Fit to Dimensions</b></td>
-                <td>Fit within max width × height box</td>
+                <td>Fit within max width &times; height box</td>
             </tr>
         </table>
 
         <p><b>Resampling Algorithm:</b> Lanczos (high-quality for both upscaling and downscaling)</p>
+        <p><b>SVG Rendering:</b> For SVG inputs, resize settings become the direct render target so large exports stay crisp.</p>
 
         <h2>Format-Specific Options</h2>
 
@@ -578,7 +591,7 @@ class FeaturesPage(BaseDocPage):
             <li><b>Non-square images:</b> Pad with transparency or crop to center</li>
         </ul>
 
-        <p><span class="warning">⚠️ ICO Limitation:</span> Pillow supports up to 256×256 pixels (standard BMP-based ICO format). For larger icons, use PNG format instead.</p>
+        <p><span class="warning">ICO Limitation:</span> Pillow supports up to 256&times;256 pixels (standard BMP-based ICO format). For larger icons, use PNG format instead.</p>
 
         <h3>BMP Settings</h3>
         <ul>
@@ -596,9 +609,9 @@ class FeaturesPage(BaseDocPage):
 
         <h3>Filename Templates</h3>
         <ul>
-            <li><b>_converted:</b> photo.jpg → photo_converted.webp</li>
-            <li><b>_{format}:</b> photo.jpg → photo_webp.webp</li>
-            <li><b>_Q{quality}:</b> photo.jpg → photo_Q85.webp</li>
+            <li><b>_converted:</b> photo.jpg -&gt; photo_converted.webp</li>
+            <li><b>_{format}:</b> photo.jpg -&gt; photo_webp.webp</li>
+            <li><b>_Q{quality}:</b> photo.jpg -&gt; photo_Q85.webp</li>
             <li><b>Custom:</b> Your own suffix</li>
         </ul>
 

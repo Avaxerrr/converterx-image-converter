@@ -145,7 +145,7 @@ class AboutPage(QWidget):
         app_name = QLabel("ConverterX")
         app_name.setObjectName("aboutAppName")
 
-        version_label = QLabel("Version 1.0.0")
+        version_label = QLabel("Version 1.1.0")
         version_label.setObjectName("aboutVersion")
 
         tagline = QLabel("Modern Image Format Converter")
@@ -172,7 +172,7 @@ class AboutPage(QWidget):
 
         creator_desc = QLabel(
             "A powerful, intuitive image converter supporting modern formats "
-            "like WebP, AVIF, and HEIC with advanced compression options."
+            "like WebP, AVIF, HEIC, and SVG input with advanced compression options."
         )
         creator_desc.setObjectName("creatorDesc")
         creator_desc.setWordWrap(True)
@@ -204,6 +204,7 @@ class AboutPage(QWidget):
         # Create labels for each library
         libs = [
             ("PySide6 (Qt 6)", "Modern GUI framework"),
+            ("QtSvg", "SVG vector rendering for sharp raster exports"),
             ("Pillow (PIL)", "Core image processing library"),
             ("pillow-avif", "AVIF format support"),
             ("pillow-heif", "HEIC/HEIF format support"),
@@ -225,7 +226,7 @@ class AboutPage(QWidget):
         license_layout = QVBoxLayout(license_group)
 
         license_text = QLabel(
-            "© 2025 Avaxerrr. All rights reserved.\n\n"
+            "© 2026 Avaxerrr. All rights reserved.\n\n"
             "This software is provided \"as is\" without warranty of any kind.\n\n"
             "This application uses PySide6, which is licensed under the LGPL v3.\n"
             "Other libraries are used under their respective permissive licenses."

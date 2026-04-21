@@ -16,9 +16,13 @@ Settings Skipped (for preview purposes):
 """
 
 from pathlib import Path
-from PIL import Image, ImageOps
 from typing import Optional
+
+from PIL import Image
+
 from core.format_settings import ConversionSettings, ResizeMode, ImageFormat
+from core.svg_render_plan import build_svg_render_plan
+from utils.image_loader import load_pil_image, is_svg_file
 from utils.logger import logger
 
 
@@ -57,36 +61,41 @@ class OutputPreviewGenerator:
         )
 
         try:
-            # Load image with EXIF orientation fix
-            with Image.open(image_path) as img:
-                original_size = img.size
+            is_svg_input = is_svg_file(image_path)
+
+            if is_svg_input:
+                plan = build_svg_render_plan(
+                    image_path,
+                    settings,
+                    log_source="OutputPreviewGenerator"
+                )
+                img = load_pil_image(image_path, target_size=plan.render_size)
+            else:
+                img = load_pil_image(image_path)
+
+            logger.debug(
+                f"Loaded image: {img.size[0]}x{img.size[1]} mode={img.mode}",
+                source="OutputPreviewGenerator"
+            )
+
+            if is_svg_input:
                 logger.debug(
-                    f"Loaded image: {original_size[0]}×{original_size[1]} mode={img.mode}",
+                    "Skipping preview post-raster resize because SVG was rendered at the planned target size",
                     source="OutputPreviewGenerator"
                 )
-
-                # Fix EXIF orientation (rotate/flip based on EXIF data)
-                img = ImageOps.exif_transpose(img)
-                if img.size != original_size:
-                    logger.debug(
-                        f"EXIF orientation applied: {img.size[0]}×{img.size[1]}",
-                        source="OutputPreviewGenerator"
-                    )
-
-                # Apply resize if needed (ONLY scale %, skip max dimensions)
+            else:
                 img = OutputPreviewGenerator._apply_resize(img, settings)
 
-                # Apply format-specific operations (RGBA → RGB conversion, etc.)
-                img = OutputPreviewGenerator._prepare_for_format(img, settings)
+            # Apply format-specific operations (RGBA -> RGB conversion, etc.)
+            img = OutputPreviewGenerator._prepare_for_format(img, settings)
 
-                logger.info(
-                    f"Output preview generated: {img.size[0]}×{img.size[1]} "
-                    f"format={settings.output_format.value} quality={settings.quality}",
-                    source="OutputPreviewGenerator"
-                )
+            logger.info(
+                f"Output preview generated: {img.size[0]}x{img.size[1]} "
+                f"format={settings.output_format.value} quality={settings.quality}",
+                source="OutputPreviewGenerator"
+            )
 
-                # Return a copy (PIL Image object in memory)
-                return img.copy()
+            return img.copy()
 
         except FileNotFoundError:
             logger.error(
@@ -103,10 +112,7 @@ class OutputPreviewGenerator:
 
     @staticmethod
     def _apply_resize(img: Image.Image, settings: ConversionSettings) -> Image.Image:
-        """
-        Apply resize based on settings for output preview.
-        """
-
+        """Apply resize based on settings for output preview."""
         if settings.resize_mode == ResizeMode.NONE:
             logger.debug("No resize applied (ResizeMode.NONE)", source="OutputPreviewGenerator")
             return img
@@ -120,7 +126,7 @@ class OutputPreviewGenerator:
 
             if (new_width, new_height) != (original_width, original_height):
                 logger.debug(
-                    f"Percentage: {original_width}×{original_height} → {new_width}×{new_height}",
+                    f"Percentage: {original_width}x{original_height} -> {new_width}x{new_height}",
                     source="OutputPreviewGenerator"
                 )
                 return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -142,7 +148,7 @@ class OutputPreviewGenerator:
 
             if (new_w, new_h) != (original_width, original_height):
                 logger.debug(
-                    f"Fit to width: {original_width}×{original_height} → {new_w}×{new_h}",
+                    f"Fit to width: {original_width}x{original_height} -> {new_w}x{new_h}",
                     source="OutputPreviewGenerator"
                 )
                 return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
@@ -164,7 +170,7 @@ class OutputPreviewGenerator:
 
             if (new_w, new_h) != (original_width, original_height):
                 logger.debug(
-                    f"Fit to height: {original_width}×{original_height} → {new_w}×{new_h}",
+                    f"Fit to height: {original_width}x{original_height} -> {new_w}x{new_h}",
                     source="OutputPreviewGenerator"
                 )
                 return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
@@ -178,7 +184,6 @@ class OutputPreviewGenerator:
                 logger.debug("Fit to dimensions: No dimensions specified", source="OutputPreviewGenerator")
                 return img
 
-            # Calculate fit dimensions
             aspect_ratio = original_width / original_height
 
             if max_w and not max_h:
@@ -201,7 +206,7 @@ class OutputPreviewGenerator:
 
             if (new_w, new_h) != (original_width, original_height):
                 logger.debug(
-                    f"Fit to dimensions: {original_width}×{original_height} → {new_w}×{new_h}",
+                    f"Fit to dimensions: {original_width}x{original_height} -> {new_w}x{new_h}",
                     source="OutputPreviewGenerator"
                 )
                 return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
@@ -222,63 +227,51 @@ class OutputPreviewGenerator:
         """
         original_mode = img.mode
 
-        # JPEG: Convert RGBA/LA/P to RGB (JPEG doesn't support transparency)
         if settings.output_format == ImageFormat.JPEG:
             if img.mode in ('RGBA', 'LA', 'P'):
                 logger.debug(
-                    f"Converting {img.mode} → RGB for JPEG format",
+                    f"Converting {img.mode} -> RGB for JPEG format",
                     source="OutputPreviewGenerator"
                 )
 
-                # Create white background
                 rgb_img = Image.new('RGB', img.size, (255, 255, 255))
 
-                # Convert palette to RGBA first if needed
                 if img.mode == 'P':
                     img = img.convert('RGBA')
 
-                # Paste with alpha mask
                 if img.mode in ('RGBA', 'LA'):
-                    rgb_img.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
+                    rgb_img.paste(img, mask=img.split()[-1])
                 else:
                     rgb_img.paste(img)
 
                 logger.info(
-                    f"Converted to RGB for JPEG (white background applied)",
+                    "Converted to RGB for JPEG (white background applied)",
                     source="OutputPreviewGenerator"
                 )
 
                 return rgb_img
 
-        # WebP/AVIF: Convert RGBA to RGB if no transparency
         elif settings.output_format in (ImageFormat.WEBP, ImageFormat.AVIF):
             if img.mode == 'RGBA':
-                # Check if image has actual transparency
-                if img.getextrema()[3][0] == 255:  # Alpha channel is all 255 (opaque)
+                if img.getextrema()[3][0] == 255:
                     logger.debug(
-                        "Converting RGBA → RGB (no transparency detected)",
+                        "Converting RGBA -> RGB (no transparency detected)",
                         source="OutputPreviewGenerator"
                     )
                     rgb_img = Image.new('RGB', img.size, (255, 255, 255))
                     rgb_img.paste(img)
                     return rgb_img
 
-        # ==========================================
-        # GIF format preparation
-        # ==========================================
         elif settings.output_format == ImageFormat.GIF:
-            # GIF requires palette mode (256 colors max)
             if img.mode != 'P':
                 logger.debug(
-                    f"Converting {img.mode} → P (palette) for GIF format",
+                    f"Converting {img.mode} -> P (palette) for GIF format",
                     source="OutputPreviewGenerator"
                 )
 
-                # Convert to palette mode with adaptive palette
-                # Apply dithering based on settings
                 if settings.gif_dithering == "floyd":
                     img = img.convert('P', palette=Image.ADAPTIVE, colors=256)
-                else:  # "none"
+                else:
                     img = img.convert('P', palette=Image.ADAPTIVE, colors=256, dither=Image.NONE)
 
                 logger.info(
@@ -288,114 +281,87 @@ class OutputPreviewGenerator:
 
                 return img
 
-        # ==========================================
-        # ICO format preparation
-        # ==========================================
         elif settings.output_format == ImageFormat.ICO:
-            # ICO must be square - apply force square method
             if img.width != img.height:
                 target_size = settings.ico_size
 
                 if settings.ico_force_square == "pad":
-                    # Pad with transparency to make square
                     logger.debug(
-                        f"Padding {img.width}×{img.height} → {target_size}×{target_size} for ICO",
+                        f"Padding {img.width}x{img.height} -> {target_size}x{target_size} for ICO",
                         source="OutputPreviewGenerator"
                     )
 
-                    # Ensure RGBA mode for transparency
                     if img.mode != 'RGBA':
                         img = img.convert('RGBA')
 
-                    # Calculate padding
                     max_dim = max(img.width, img.height)
                     new_img = Image.new('RGBA', (max_dim, max_dim), (0, 0, 0, 0))
 
-                    # Center paste
                     paste_x = (max_dim - img.width) // 2
                     paste_y = (max_dim - img.height) // 2
                     new_img.paste(img, (paste_x, paste_y))
 
-                    # Resize to target size
                     img = new_img.resize((target_size, target_size), Image.Resampling.LANCZOS)
 
                     logger.info(
-                        f"ICO padded to square: {target_size}×{target_size}",
+                        f"ICO padded to square: {target_size}x{target_size}",
                         source="OutputPreviewGenerator"
                     )
 
                 elif settings.ico_force_square == "crop":
-                    # Crop to center square
                     logger.debug(
-                        f"Cropping {img.width}×{img.height} → {target_size}×{target_size} for ICO",
+                        f"Cropping {img.width}x{img.height} -> {target_size}x{target_size} for ICO",
                         source="OutputPreviewGenerator"
                     )
 
-                    # Find the smallest dimension
                     min_dim = min(img.width, img.height)
 
-                    # Calculate center crop
                     left = (img.width - min_dim) // 2
                     top = (img.height - min_dim) // 2
                     right = left + min_dim
                     bottom = top + min_dim
 
                     img = img.crop((left, top, right, bottom))
-
-                    # Resize to target size
                     img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
 
                     logger.info(
-                        f"ICO cropped to square: {target_size}×{target_size}",
+                        f"ICO cropped to square: {target_size}x{target_size}",
                         source="OutputPreviewGenerator"
                     )
 
                 return img
             else:
-                # Already square, just resize to target size
                 if img.width != settings.ico_size:
                     logger.debug(
-                        f"Resizing square ICO: {img.width}×{img.height} → {settings.ico_size}×{settings.ico_size}",
+                        f"Resizing square ICO: {img.width}x{img.height} -> {settings.ico_size}x{settings.ico_size}",
                         source="OutputPreviewGenerator"
                     )
                     img = img.resize((settings.ico_size, settings.ico_size), Image.Resampling.LANCZOS)
 
-                # Ensure RGBA mode for ICO
                 if img.mode != 'RGBA':
                     img = img.convert('RGBA')
 
                 return img
 
-        # ==========================================
-        # TIFF format preparation
-        # ==========================================
         elif settings.output_format == ImageFormat.TIFF:
-            # Convert palette/indexed images to RGB for JPEG compression
             if settings.tiff_compression == 'jpeg' and img.mode in ('P', 'PA', 'L', 'LA'):
-                # JPEG compression in TIFF only supports RGB/RGBA, not palette
                 if img.mode in ('PA', 'LA'):
                     img = img.convert('RGBA')
                 else:
                     img = img.convert('RGB')
             return img
 
-        # ==========================================
-        # BMP format preparation
-        # ==========================================
         elif settings.output_format == ImageFormat.BMP:
-            # BMP supports RGB/RGBA, but RGBA is better
-            # Convert palette mode if present
             if img.mode == 'P':
                 logger.debug(
-                    f"Converting P (palette) → RGBA for BMP format",
+                    "Converting P (palette) -> RGBA for BMP format",
                     source="OutputPreviewGenerator"
                 )
                 img = img.convert('RGBA')
-            # Pass through otherwise
 
         if img.mode != original_mode:
             logger.debug(
-                f"Format preparation: {original_mode} → {img.mode}",
+                f"Format preparation: {original_mode} -> {img.mode}",
                 source="OutputPreviewGenerator"
             )
         else:
@@ -414,7 +380,7 @@ class OutputPreviewGenerator:
         Applied Settings:
         - Quality, lossless, PNG compression (already applied)
         - WebP subsampling (affects visual quality)
-        - AVIF range (affects contrast/levels)
+        - AVIF range (affects contrast/black levels)
         - TIFF compression (affects visual quality for JPEG compression)
         - GIF optimization (affects visual quality)
 
@@ -459,9 +425,7 @@ class OutputPreviewGenerator:
                     source="OutputPreviewGenerator"
                 )
 
-            # Apply subsampling (affects visual quality)
             if settings.webp_subsampling:
-                # PIL expects string format "4:2:0" or "4:4:4"
                 subsampling_str = f"{settings.webp_subsampling[0]}:{settings.webp_subsampling[1]}:0"
                 kwargs['subsampling'] = subsampling_str
                 logger.debug(
@@ -481,22 +445,17 @@ class OutputPreviewGenerator:
                     source="OutputPreviewGenerator"
                 )
 
-            # Apply range (affects contrast/black levels)
             if settings.avif_range:
-                kwargs['range'] = settings.avif_range  # "full" or "limited"
+                kwargs['range'] = settings.avif_range
                 logger.debug(
                     f"AVIF range applied: {settings.avif_range}",
                     source="OutputPreviewGenerator"
                 )
 
-        # ==========================================
-        # TIFF format kwargs
-        # ==========================================
         elif settings.output_format == ImageFormat.TIFF:
             kwargs['format'] = 'TIFF'
             kwargs['compression'] = settings.tiff_compression
 
-            # Only add quality if JPEG compression is used
             if settings.tiff_compression == 'jpeg':
                 kwargs['quality'] = settings.tiff_jpeg_quality
                 logger.debug(
@@ -509,42 +468,28 @@ class OutputPreviewGenerator:
                     source="OutputPreviewGenerator"
                 )
 
-        # ==========================================
-        # GIF format kwargs
-        # ==========================================
         elif settings.output_format == ImageFormat.GIF:
             kwargs['format'] = 'GIF'
             kwargs['optimize'] = settings.gif_optimize
-
-            # Save transparency if present
-            kwargs['transparency'] = 0  # Preserve transparent color
-            kwargs['disposal'] = 2  # Clear frame after rendering
+            kwargs['transparency'] = 0
+            kwargs['disposal'] = 2
 
             logger.debug(
                 f"GIF kwargs: optimize={settings.gif_optimize}",
                 source="OutputPreviewGenerator"
             )
 
-        # ==========================================
-        # ICO format kwargs
-        # ==========================================
         elif settings.output_format == ImageFormat.ICO:
             kwargs['format'] = 'ICO'
-            # Note: sizes parameter is handled during format preparation (square conversion)
-            # PIL automatically uses the image size for single-size ICO
             kwargs['sizes'] = [(settings.ico_size, settings.ico_size)]
 
             logger.debug(
-                f"ICO kwargs: size={settings.ico_size}×{settings.ico_size}",
+                f"ICO kwargs: size={settings.ico_size}x{settings.ico_size}",
                 source="OutputPreviewGenerator"
             )
 
-        # ==========================================
-        # BMP format kwargs
-        # ==========================================
         elif settings.output_format == ImageFormat.BMP:
             kwargs['format'] = 'BMP'
-            # BMP has no compression options
             logger.debug(
                 "BMP kwargs: no options (uncompressed)",
                 source="OutputPreviewGenerator"

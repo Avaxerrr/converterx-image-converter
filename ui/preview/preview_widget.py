@@ -17,6 +17,7 @@ from ui.metadata_dialog import MetadataDialog
 from .image_graphics_view import ImageGraphicsView
 from .preview_toolbar import PreviewToolbar
 from .preview_types import PreviewMode
+from utils.image_loader import load_pil_image
 from utils.logger import logger
 from ui.widgets.loading_spinner import LoadingSpinner
 from typing import TYPE_CHECKING, Optional
@@ -147,77 +148,56 @@ class PreviewWidget(QWidget):
 
     def _load_image_with_exif_fix(self, image_path: Path, preview_mode: bool = False) -> QPixmap:
         """
-        Load image using PIL (supports AVIF) and convert to QPixmap with EXIF orientation fix.
+        Load image using the shared loader and convert it to QPixmap.
 
         Args:
             image_path: Path to the image file
             preview_mode: If True, downscale to PREVIEW_MAX_DIMENSION for performance
         """
         try:
-            from PIL import Image, ImageOps
+            if preview_mode:
+                pil_image = load_pil_image(
+                    image_path,
+                    max_dimension=self.PREVIEW_MAX_DIMENSION
+                )
+            else:
+                pil_image = load_pil_image(image_path)
 
-            # Load with PIL (this supports AVIF via pillow-avif-plugin)
-            with Image.open(image_path) as pil_image:
-                original_size = (pil_image.width, pil_image.height)
+            logger.debug(
+                f"Loaded preview image: {image_path.name} ({pil_image.width}x{pil_image.height})",
+                "ImageLoader"
+            )
 
-                # Apply EXIF orientation
-                pil_image = ImageOps.exif_transpose(pil_image)
-
-                # === PREVIEW MODE: Downscale if needed ===
-                if preview_mode:
-                    max_dim = max(pil_image.width, pil_image.height)
-                    if max_dim > self.PREVIEW_MAX_DIMENSION:
-                        # Use thumbnail() - maintains aspect ratio, only downscales
-                        pil_image.thumbnail(
-                            (self.PREVIEW_MAX_DIMENSION, self.PREVIEW_MAX_DIMENSION),
-                            Image.Resampling.LANCZOS
-                        )
-                        logger.debug(
-                            f"Downscaled {image_path.name}: {original_size} → "
-                            f"({pil_image.width}×{pil_image.height})",
-                            "ImageLoader"
-                        )
-                    else:
-                        logger.debug(
-                            f"No downscaling needed for {image_path.name}: "
-                            f"{original_size} ≤ {self.PREVIEW_MAX_DIMENSION}px",
-                            "ImageLoader"
-                        )
+            if pil_image.mode not in ('RGB', 'RGBA'):
+                if pil_image.mode == 'P':
+                    pil_image = pil_image.convert('RGBA')
                 else:
-                    logger.debug(f"Loading full resolution: {image_path.name} {original_size}", "ImageLoader")
+                    pil_image = pil_image.convert('RGB')
 
-                # Convert to RGB/RGBA for compatibility
-                if pil_image.mode not in ('RGB', 'RGBA'):
-                    if pil_image.mode == 'P':  # Palette mode
-                        pil_image = pil_image.convert('RGBA')
-                    else:
-                        pil_image = pil_image.convert('RGB')
+            if pil_image.mode == 'RGBA':
+                data = pil_image.tobytes('raw', 'RGBA')
+                qimage = QImage(
+                    data,
+                    pil_image.width,
+                    pil_image.height,
+                    pil_image.width * 4,
+                    QImage.Format_RGBA8888
+                )
+            else:
+                data = pil_image.tobytes('raw', 'RGB')
+                qimage = QImage(
+                    data,
+                    pil_image.width,
+                    pil_image.height,
+                    pil_image.width * 3,
+                    QImage.Format_RGB888
+                )
 
-                # Convert PIL image to QPixmap
-                if pil_image.mode == 'RGBA':
-                    data = pil_image.tobytes('raw', 'RGBA')
-                    qimage = QImage(
-                        data,
-                        pil_image.width,
-                        pil_image.height,
-                        pil_image.width * 4,  # bytes per line
-                        QImage.Format_RGBA8888
-                    )
-                else:  # RGB
-                    data = pil_image.tobytes('raw', 'RGB')
-                    qimage = QImage(
-                        data,
-                        pil_image.width,
-                        pil_image.height,
-                        pil_image.width * 3,  # bytes per line
-                        QImage.Format_RGB888
-                    )
-
-                return QPixmap.fromImage(qimage)
+            return QPixmap.fromImage(qimage.copy())
 
         except Exception as e:
             logger.error(f"Failed to load image {image_path.name}: {e}", "ImageLoader")
-            return QPixmap()  # Return empty pixmap on error
+            return QPixmap()
 
     def _get_cached_or_load(self, image_path: Path, mode: PreviewMode) -> QPixmap:
         """Get image from cache or load it (with caching)."""

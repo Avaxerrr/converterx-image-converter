@@ -1,7 +1,9 @@
 from pathlib import Path
-from PIL import Image, ImageOps
+from PIL import Image
 from typing import Optional, Tuple
 from core.format_settings import ConversionSettings, ResizeMode, ImageFormat
+from core.svg_render_plan import build_svg_render_plan
+from utils.image_loader import load_pil_image, is_svg_file
 from utils.logger import logger, LogLevel
 import time
 import io
@@ -21,42 +23,56 @@ class ImageConverter:
         start_time = time.time()
 
         try:
-            with Image.open(input_path) as img:
-                img = ImageOps.exif_transpose(img)
-                original_size = img.size
+            is_svg_input = is_svg_file(input_path)
 
-                logger.log(f"Original image: {original_size[0]}x{original_size[1]}", LogLevel.DEBUG, "Converter")
+            if is_svg_input:
+                plan = build_svg_render_plan(input_path, settings, log_source="Converter")
+                img = load_pil_image(input_path, target_size=plan.render_size)
+            else:
+                plan = None
+                img = load_pil_image(input_path)
 
-                # Apply resize if configured (happens first, before format conversion)
+            original_size = img.size
+
+            logger.debug(f"Original image: {original_size[0]}x{original_size[1]}", "Converter")
+
+            # For SVG inputs, resizing is baked into the render size so we don't
+            # rasterize once and then scale a bitmap afterward.
+            if is_svg_input:
+                logger.debug(
+                    "Skipping post-raster resize because SVG was rendered at the planned target size",
+                    "Converter"
+                )
+            else:
                 img = ImageConverter.apply_resize(img, settings)
 
-                if img.size != original_size:
-                    logger.log(f"Resized to: {img.size[0]}x{img.size[1]}", LogLevel.INFO, "Converter")
+            if img.size != original_size:
+                logger.info(f"Resized to: {img.size[0]}x{img.size[1]}", "Converter")
 
-                # ==========================================
-                # Format-specific preparation
-                # ==========================================
-                img = ImageConverter._prepare_for_format(img, settings)
+            # ==========================================
+            # Format-specific preparation
+            # ==========================================
+            img = ImageConverter._prepare_for_format(img, settings)
 
-                output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # Target size mode - iterative compression
-                if settings.target_size_kb and settings.output_format not in [ImageFormat.PNG, ImageFormat.BMP, ImageFormat.GIF, ImageFormat.ICO]:
-                    success, msg, size = ImageConverter._compress_to_target_size(
-                        img, output_path, settings
-                    )
-                    elapsed = time.time() - start_time
-                    return (success, f"{msg} ({elapsed:.2f}s)", size)
+            # Target size mode - iterative compression
+            if settings.target_size_kb and settings.output_format not in [ImageFormat.PNG, ImageFormat.BMP, ImageFormat.GIF, ImageFormat.ICO]:
+                success, msg, size = ImageConverter._compress_to_target_size(
+                    img, output_path, settings
+                )
+                elapsed = time.time() - start_time
+                return (success, f"{msg} ({elapsed:.2f}s)", size)
 
-                # Normal quality-based compression
-                save_kwargs = settings.to_pillow_kwargs()
+            # Normal quality-based compression
+            save_kwargs = settings.to_pillow_kwargs()
 
-                # Special handling for ICO: Save with explicit size list
-                if settings.output_format == ImageFormat.ICO:
-                    current_size = img.size[0]  # Image is square at this point
-                    img.save(output_path, format='ICO', sizes=[(current_size, current_size)])
-                else:
-                    img.save(output_path, **save_kwargs)
+            # Special handling for ICO: Save with explicit size list
+            if settings.output_format == ImageFormat.ICO:
+                current_size = img.size[0]  # Image is square at this point
+                img.save(output_path, format='ICO', sizes=[(current_size, current_size)])
+            else:
+                img.save(output_path, **save_kwargs)
 
             output_size = output_path.stat().st_size
             elapsed = time.time() - start_time
@@ -64,7 +80,7 @@ class ImageConverter:
             return (True, f"Converted successfully in {elapsed:.2f}s", output_size)
 
         except Exception as e:
-            logger.log(f"Conversion error: {str(e)}", LogLevel.ERROR, "Converter")
+            logger.error(f"Conversion error: {str(e)}", "Converter")
             return (False, f"Conversion failed: {str(e)}", None)
 
     @staticmethod
